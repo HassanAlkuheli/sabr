@@ -52,6 +52,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get SSL Certificates
+        run: |
+          echo "🔐 Getting SSL certificates with Certbot..."
+          docker run --rm -v letsencrypt:/etc/letsencrypt -p 80:80 certbot/certbot certonly \
+            --standalone \
+            -d sabr.haskify.com \
+            -d api.sabr.haskify.com \
+            -d traefik.sabr.haskify.com \
+            --email admin@sabr.haskify.com \
+            --agree-tos \
+            --no-eff-email \
+            --non-interactive
+
       - name: Create .env file with full configuration
         env:
           # Secrets
