@@ -343,12 +343,28 @@ export class RunnerService {
       // ── Flatten single wrapper directory ───
       await this.flattenSingleDir(codeDir);
 
-      // ── Ensure index.html exists for static sites ──
-      await this.ensureIndexHtml(codeDir, workspace);
-
       // ── Detect project info ──────────────
       const info = await detectProjectInfo(codeDir);
       await log(workspace, `Detected: type=${info.type} dockerfile=${info.hasDockerfile} dbSql=${info.hasDbSql} port=${info.appPort}`);
+
+      // ── Ensure index.html exists ─────────
+      await this.ensureIndexHtml(codeDir, workspace);
+
+      // For Node.js projects: also ensure public/ has index.html (Express static)
+      if (info.type === "nodejs") {
+        const publicDir = join(codeDir, "public");
+        if (existsSync(publicDir)) {
+          await this.ensureIndexHtml(publicDir, workspace);
+        }
+        // Remove student's docker-compose.yml to avoid build-context confusion
+        for (const f of ["docker-compose.yml", "docker-compose.yaml"]) {
+          const p = join(codeDir, f);
+          if (existsSync(p)) {
+            await rm(p, { force: true });
+            await log(workspace, `Removed student's ${f} (using generated config)`);
+          }
+        }
+      }
 
       // ── Sanitise db.sql — strip hardcoded DB names so init runs against MYSQL_DATABASE ──
       if (info.hasDbSql) {
@@ -551,8 +567,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
       await rename(src, indexPath);
       await log(workspace, `Renamed ${htmlFiles[0]} → index.html`);
     } else {
-      // Multiple HTML files → create an index that redirects to the first, with links to all
-      const mainFile = htmlFiles[0]!;
+      // Multiple HTML files → create an index that redirects to the best candidate
+      const preferred = ["home.html", "main.html", "default.html", "app.html", "home.htm", "main.htm"];
+      const mainFile = preferred.find(p => htmlFiles.includes(p)) ?? htmlFiles[0]!;
       const links = htmlFiles.map(f => `<li><a href="${f}">${f}</a></li>`).join("\n        ");
       const html = `<!DOCTYPE html>
 <html lang="en">
