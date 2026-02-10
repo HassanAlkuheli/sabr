@@ -2,72 +2,191 @@ name: Deploy to Production
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 
 env:
-  VPS_HOST: ${{ secrets.VPS_HOST }}
-  VPS_USER: ${{ secrets.VPS_USER }}
-  VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-  PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
-  ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-  SEED_PASSWORD: ${{ secrets.SEED_PASSWORD }}
+  DOCKER_BUILDKIT: 1
+  COMPOSE_PROJECT_NAME: sabr
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  # ============================================
+  # STEP 1: Build Production Images
+  # ============================================
+  build:
+    name: Build Production Images
+    runs-on: self-hosted
+
     steps:
-      - name: Deploy to VPS
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ env.VPS_HOST }}
-          username: ${{ env.VPS_USER }}
-          key: ${{ env.VPS_SSH_KEY }}
-          envs: PRODUCTION_ENV,ADMIN_PASSWORD,SEED_PASSWORD
-          command_timeout: 30m
-          script: |
-            set -e
+      - name: Clean workspace
+        run: |
+          rm -rf $GITHUB_WORKSPACE/* || sudo rm -rf $GITHUB_WORKSPACE/*
 
-            APP_DIR="/opt/sabr"
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            # ── First-time setup ──
-            if [ ! -d "$APP_DIR" ]; then
-              echo "🔧 First-time setup: cloning repository..."
-              git clone https://github.com/HassanAlkuheli/sabr.git "$APP_DIR"
+      - name: Build backend image
+        run: |
+          docker build \
+            --tag sabr-backend:latest \
+            -f backend/Dockerfile \
+            backend/
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            --build-arg API_URL=https://api.sabr.haskify.com \
+            --tag sabr-frontend:latest \
+            -f frontend/Dockerfile \
+            frontend/
+
+  # ============================================
+  # STEP 2: Deploy
+  # ============================================
+  deploy:
+    name: Deploy Services
+    runs-on: self-hosted
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Write .env file
+        env:
+          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+        run: |
+          echo "📝 Writing .env..."
+          printf '%s\n' "$PRODUCTION_ENV" > .env
+
+      - name: Deploy with Docker Compose
+        run: |
+          echo "🚀 Deploying with Docker Compose..."
+          docker compose -f docker-compose.prod.yml up -d --force-recreate
+          echo "Waiting for services to be healthy..."
+          sleep 20
+
+  # ============================================
+  # STEP 3: Health Check
+  # ============================================
+  health-check:
+    name: Health Check
+    runs-on: self-hosted
+    needs: deploy
+
+    steps:
+      - name: Check backend health
+        run: |
+          echo "Checking backend health..."
+          for i in {1..30}; do
+            if docker exec sabr-backend wget --no-verbose --tries=1 --spider http://localhost:3000/ 2>/dev/null; then
+              echo "✅ Backend is healthy!"
+              break
             fi
+            if [ $i -eq 30 ]; then
+              echo "❌ Backend health check failed"
+              docker logs sabr-backend --tail 50
+              exit 1
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
 
-            cd "$APP_DIR"
+      - name: Check frontend health
+        run: |
+          echo "Checking frontend health..."
+          for i in {1..15}; do
+            if docker exec sabr-frontend wget --no-verbose --tries=1 --spider http://localhost:80/ 2>/dev/null; then
+              echo "✅ Frontend is healthy!"
+              break
+            fi
+            if [ $i -eq 15 ]; then
+              echo "❌ Frontend health check failed"
+              docker logs sabr-frontend --tail 50
+              exit 1
+            fi
+            echo "Waiting for frontend... ($i/15)"
+            sleep 2
+          done
 
-            # ── Pull latest code ──
-            echo "📥 Pulling latest code..."
-            git fetch origin main
-            git reset --hard origin/main
+  # ============================================
+  # STEP 4: Database Migrations & Seeding
+  # ============================================
+  migrate-and-seed:
+    name: Migrate & Seed
+    runs-on: self-hosted
+    needs: health-check
 
-            # ── Write .env from GitHub secret ──
-            echo "📝 Writing .env..."
-            printf '%s\n' "$PRODUCTION_ENV" > .env
+    steps:
+      - name: Run database migrations
+        run: |
+          echo "🗃️ Running database migrations..."
+          docker exec sabr-backend bunx drizzle-kit migrate || echo "Migration may have already been applied"
 
-            # ── Build and deploy ──
-            echo "🚀 Building and deploying with Docker Compose..."
-            docker compose -f docker-compose.prod.yml build --no-cache
-            docker compose -f docker-compose.prod.yml up -d
+      - name: Seed admin account
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          echo "👤 Seeding admin account..."
+          docker exec -e ADMIN_PASSWORD="$ADMIN_PASSWORD" sabr-backend bun run src/scripts/seed-admin.ts || echo "Admin may already exist"
 
-            # ── Wait for services to be healthy ──
-            echo "⏳ Waiting for services to be ready..."
-            sleep 15
+      - name: Seed production data
+        env:
+          SEED_PASSWORD: ${{ secrets.SEED_PASSWORD }}
+        run: |
+          echo "🌱 Seeding production data (professor, student, labs, projects)..."
+          docker exec -e SEED_PASSWORD="$SEED_PASSWORD" sabr-backend bun run src/scripts/seed-production.ts || echo "Production data may already exist"
 
-            # ── Run database migrations ──
-            echo "🗃️ Running database migrations..."
-            docker exec sabr-backend bunx drizzle-kit migrate || echo "Migration may have already been applied"
+  # ============================================
+  # STEP 5: Cleanup & Summary
+  # ============================================
+  summary:
+    name: Deployment Summary
+    runs-on: self-hosted
+    needs: [build, deploy, health-check, migrate-and-seed]
+    if: success()
 
-            # ── Seed admin account ──
-            echo "👤 Seeding admin account..."
-            docker exec -e ADMIN_PASSWORD="$ADMIN_PASSWORD" sabr-backend bun run src/scripts/seed-admin.ts || echo "Admin may already exist"
+    steps:
+      - name: Cleanup old images
+        run: |
+          docker image prune -f
 
-            # ── Seed production data (professor, student, labs, projects) ──
-            echo "🌱 Seeding production data..."
-            docker exec -e SEED_PASSWORD="$SEED_PASSWORD" sabr-backend bun run src/scripts/seed-production.ts || echo "Production data may already exist"
+      - name: Deployment Summary
+        run: |
+          echo "============================================"
+          echo "       SABR DEPLOYMENT COMPLETE"
+          echo "============================================"
+          echo ""
+          echo "🌐 Public Access:"
+          echo "   Frontend: https://sabr.haskify.com"
+          echo "   API:      https://api.sabr.haskify.com"
+          echo ""
+          echo "📦 Running Containers:"
+          docker ps --filter "name=sabr" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          echo ""
+          echo "============================================"
 
-            echo "✅ Deployment complete!"
-            echo "   Frontend: https://sabr.haskify.com"
-            echo "   API:      https://api.sabr.haskify.com"
+  # ============================================
+  # Rollback on Failure
+  # ============================================
+  rollback:
+    name: Rollback on Failure
+    runs-on: self-hosted
+    needs: [deploy, health-check, migrate-and-seed]
+    if: failure()
+
+    steps:
+      - name: Show failure logs
+        run: |
+          echo "❌ Deployment failed! Showing logs..."
+          echo ""
+          echo "=== Backend Logs ==="
+          docker logs sabr-backend --tail 30 2>&1 || true
+          echo ""
+          echo "=== Frontend Logs ==="
+          docker logs sabr-frontend --tail 30 2>&1 || true
+          echo ""
+          echo "=== Traefik Logs ==="
+          docker logs traefik --tail 30 2>&1 || true
+          echo ""
+          echo "⚠️ Manual investigation required."

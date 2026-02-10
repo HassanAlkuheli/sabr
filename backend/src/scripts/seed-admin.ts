@@ -30,7 +30,7 @@ async function seed() {
     process.exit(0);
   }
 
-  const hashedPassword = await Bun.password.hash(ADMIN_PASSWORD, {
+  const hashedPassword = await Bun.password.hash(ADMIN_PASSWORD as string, {
     algorithm: "bcrypt",
     cost: 10,
   });

@@ -87,7 +87,7 @@ const LABS = [
 async function seed() {
   console.log("🌱 Starting production seed...\n");
 
-  const hashedPw = await hash(SEED_PASSWORD);
+  const hashedPw = await hash(SEED_PASSWORD!);
 
   // ── Professor ──
   let professor = await db.query.users.findFirst({

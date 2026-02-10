@@ -187,7 +187,7 @@ const GRADE_MESSAGES = [
 async function seed() {
   console.log("  Starting data seed...\n");
 
-  const hashedPw = await hash(PASSWORD);
+  const hashedPw = await hash(PASSWORD!);
 
   // -- Professors --
 
