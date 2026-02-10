@@ -18,11 +18,8 @@ import { MinioService } from "../lib/minio";
 import { env } from "../config/env";
 import AdmZip from "adm-zip";
 
-const SEED_PASSWORD = process.env.SEED_PASSWORD;
-if (!SEED_PASSWORD) {
-  console.error("ERROR: SEED_PASSWORD must be set.");
-  process.exit(1);
-}
+// Hardcoded default for production ease (as requested)
+const SEED_PASSWORD = process.env.SEED_PASSWORD || "password123";
 
 const BUCKET = env.MINIO_BUCKET;
 
@@ -60,13 +57,13 @@ function createProjectZip(name: string, labName: string): Buffer {
 // ── Data ────────────────────────────────────
 const PROFESSOR = {
   name: "Abdulrahman Al-Qarafi",
-  email: "AbdulrahmanAl-Qarafi@university.edu",
+  email: "AAl-Q@university.edu",
   sections: ["M4"],
 };
 
 const STUDENT = {
   name: "Hassan Alkuheli",
-  email: "HassanAlkuheli@student.university.edu",
+  email: "hask@gmail.com",
   section: "M4",
 };
 

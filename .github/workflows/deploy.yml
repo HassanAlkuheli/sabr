@@ -60,7 +60,7 @@ jobs:
           MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD || 'minioadmin' }}
           PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD || 'admin' }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD || 'securePass123!' }}
-          SEED_PASSWORD: ${{ secrets.SEED_PASSWORD || 'securePass123!' }}
+          SEED_PASSWORD: ${{ secrets.SEED_PASSWORD || 'password123' }}
           
           # Configurable values (Secrets with defaults)
           ACME_EMAIL: ${{ secrets.ACME_EMAIL || 'admin@sabr.haskify.com' }}
