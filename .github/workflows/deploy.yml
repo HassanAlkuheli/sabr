@@ -164,12 +164,15 @@ jobs:
         run: |
           echo "Checking frontend health..."
           for i in {1..15}; do
-            if docker exec sabr-frontend wget --no-verbose --tries=1 --spider http://localhost:80/ 2>/dev/null; then
+            if docker exec sabr-frontend curl -f -s http://localhost/ > /dev/null; then
               echo "✅ Frontend is healthy!"
               break
             fi
             if [ $i -eq 15 ]; then
               echo "❌ Frontend health check failed"
+              # Run verbose curl to see why it failed
+              echo "Debug: Curl output:"
+              docker exec sabr-frontend curl -v http://localhost/ || true
               docker logs sabr-frontend --tail 50
               exit 1
             fi

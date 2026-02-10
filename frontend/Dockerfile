@@ -16,6 +16,9 @@ RUN npx ng build --configuration production
 # ── Stage 2: Serve with nginx ──
 FROM nginx:alpine
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 
