@@ -22,8 +22,7 @@ if (await envFile.exists()) {
 const envSchema = z.object({
   // ── Application ──────────────────
   PORT: z.coerce.number().default(3000),
-  JWT_SECRET: z.string().min(16),
-  DEPLOY_DOMAIN: z.string().default("sabr.localhost"),
+  JWT_SECRET: z.string().min(16),  CORS_ORIGIN: z.string().optional(),  DEPLOY_DOMAIN: z.string().default("sabr.localhost"),
 
   // ── Database ─────────────────────
   DATABASE_URL: z.string().url(),

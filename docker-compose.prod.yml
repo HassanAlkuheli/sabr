@@ -87,6 +87,7 @@ services:
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       DEPLOY_DOMAIN: ${DEPLOY_DOMAIN:-sabr.haskify.com}
+      CORS_ORIGIN: https://${DEPLOY_DOMAIN:-sabr.haskify.com}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
@@ -107,13 +108,19 @@ services:
     networks:
       - sabr-net
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.${DEPLOY_DOMAIN:-sabr.haskify.com}`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
 
   # ── Frontend (Angular + nginx) ──────────────
   frontend:
     build:
       context: ./frontend
       args:
-        API_URL: /api
+        API_URL: https://api.${DEPLOY_DOMAIN:-sabr.haskify.com}
     container_name: sabr-frontend
     depends_on:
       - backend

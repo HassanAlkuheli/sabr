@@ -13,7 +13,12 @@ import { RunnerService } from "./src/modules/runner/runner.service";
 import { ViewerService } from "./src/modules/viewer/viewer.service";
 
 const app = new Elysia()
-  .use(cors())
+  .use(
+    cors({
+      origin: env.CORS_ORIGIN ? env.CORS_ORIGIN.split(",") : true,
+      credentials: true,
+    }),
+  )
   // ──────── Global Error Handler ────────
   // Catches errors thrown from derive(), guards, and route handlers.
   // Converts AppError subclasses to proper HTTP status codes,
