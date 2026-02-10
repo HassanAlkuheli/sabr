@@ -60,8 +60,16 @@ jobs:
           printf '%s\n' "$PRODUCTION_ENV" > .env
 
       - name: Deploy with Docker Compose
+        env:
+          # Fallback if ACME_EMAIL is missing from .env (can be set as separate secret)
+          ACME_EMAIL: ${{ secrets.ACME_EMAIL || 'admin@sabr.haskify.com' }}
         run: |
           echo "🚀 Deploying with Docker Compose..."
+          # Export ACME_EMAIL explicitly if not in .env
+          if ! grep -q "ACME_EMAIL=" .env; then
+            echo "⚠️ ACME_EMAIL missing from .env, using default/secret value"
+            export ACME_EMAIL
+          fi
           docker compose -f docker-compose.prod.yml up -d --force-recreate
           echo "Waiting for services to be healthy..."
           sleep 20
