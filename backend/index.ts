@@ -3,7 +3,9 @@ import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { env } from "./src/config/env";
 import { AppError, sanitizeError } from "./src/lib/errors";
+import { sql } from "drizzle-orm";
 import { authController } from "./src/modules/auth/auth.controller";
+import { db } from "./src/db";
 import { adminController } from "./src/modules/admin/admin.controller";
 import { projectsController } from "./src/modules/projects/projects.controller";
 import { runnerController } from "./src/modules/runner/runner.controller";
@@ -69,6 +71,20 @@ const app = new Elysia()
     detail: {
       summary: "Health Check",
       description: "Returns API status.",
+      tags: ["Health"],
+    },
+  })
+  .get("/health", async () => {
+    try {
+      await db.execute(sql`SELECT 1`);
+      return { status: "ok", db: "connected" };
+    } catch (e) {
+      return { status: "degraded", db: "disconnected", error: String(e) };
+    }
+  }, {
+    detail: {
+      summary: "Deep Health Check",
+      description: "Returns API and database connectivity status.",
       tags: ["Health"],
     },
   })
