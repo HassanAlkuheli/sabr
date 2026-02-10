@@ -18,7 +18,7 @@ export class StatusBadgeComponent {
       case 'RUNNING':
         return `${base} bg-emerald-100 text-emerald-700`;
       case 'STARTING':
-        return `${base} bg-amber-100 text-amber-700`;
+        return `${base} bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300`;
       case 'STOPPED':
         return `${base} bg-slate-100 text-slate-600`;
       case 'ERROR':
