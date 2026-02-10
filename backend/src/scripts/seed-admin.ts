@@ -12,7 +12,12 @@ import { db } from "../db";
 import { users } from "../db/schema";
 
 const ADMIN_EMAIL = "admin@sabr.local";
-const ADMIN_PASSWORD = "admin123"; // change in production!
+// ADMIN_PASSWORD must be provided via environment variable. No default is allowed.
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  console.error("ERROR: ADMIN_PASSWORD must be set when running seed-admin.ts");
+  process.exit(1);
+}
 const ADMIN_NAME = "Sabr Admin";
 
 async function seed() {
@@ -42,8 +47,8 @@ async function seed() {
     .returning({ id: users.id, email: users.email });
 
   console.log(`🌱 Admin created: ${admin!.email} (id: ${admin!.id})`);
-  console.log(`   Default password: ${ADMIN_PASSWORD}`);
-  console.log("   ⚠️  Change this password in production!");
+  // Do NOT print passwords to logs in production environments.
+  console.log("   ⚠️  Admin user created. Ensure the ADMIN_PASSWORD value is kept secret and changed if necessary.");
   process.exit(0);
 }
 
