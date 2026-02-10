@@ -235,6 +235,8 @@ jobs:
           echo "📦 Running Containers:"
           docker ps --filter "name=sabr" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           echo ""
+          echo "🔎 TRAEFIK DEBUG LOGS (Last 50 lines):"
+          docker logs traefik --tail 50
           echo "============================================"
 
   # ============================================

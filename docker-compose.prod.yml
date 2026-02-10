@@ -10,6 +10,7 @@ services:
     image: traefik:v3.2
     container_name: traefik
     command:
+      - --log.level=DEBUG
       - --api.dashboard=true
       - --api.insecure=false
       - --providers.docker=true
@@ -20,7 +21,8 @@ services:
       # Let's Encrypt ACME – automatic SSL
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      # Use TLS Challenge (Port 443) instead of HTTP Challenge (Port 80) for better reliability
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       # Redirect all HTTP → HTTPS
       - --entrypoints.web.http.redirections.entryPoint.to=websecure
       - --entrypoints.web.http.redirections.entryPoint.scheme=https
