@@ -18,33 +18,6 @@ const DEPLOY_DOMAIN = env.DEPLOY_DOMAIN;
 const RUNNER_TIMEOUT_MS = env.RUNNER_TIMEOUT_MINUTES * 60 * 1000;
 const DEPLOY_LOG = "deploy.log";
 
-/**
- * Resolve the host filesystem path for a workspace directory.
- * When the backend runs inside Docker with the socket mounted,
- * volume paths in generated compose files must be absolute HOST paths
- * (not paths inside the backend container).
- */
-let _volumeMountpoint: string | null = null;
-async function resolveHostPath(containerPath: string): Promise<string> {
-  if (!_volumeMountpoint) {
-    try {
-      const result = await $`docker volume inspect sabr_runner_workspaces --format {{.Mountpoint}}`.quiet();
-      _volumeMountpoint = result.stdout.toString().trim();
-    } catch {
-      // Fallback: not running in Docker, use paths as-is
-      _volumeMountpoint = "";
-    }
-  }
-  if (!_volumeMountpoint) return containerPath;
-  // containerPath is like /app/tmp/runners/<id>/code
-  // We need to replace /app/tmp/ with the volume mountpoint
-  const TMP_PREFIX = "/app/tmp/";
-  if (containerPath.startsWith(TMP_PREFIX)) {
-    return _volumeMountpoint + "/" + containerPath.slice(TMP_PREFIX.length);
-  }
-  return containerPath;
-}
-
 type ProjectType = "static" | "nodejs";
 
 // ──────────────────────────────────────────────
@@ -92,17 +65,14 @@ async function detectProjectInfo(codeDir: string): Promise<ProjectInfo> {
 //  Docker Compose Generators
 // ──────────────────────────────────────────────
 
-function generateStaticCompose(projectId: string, hostCodeDir: string, hostNginxConf: string): string {
+function generateStaticCompose(projectId: string): string {
   const safeId = projectId.replace(/-/g, "");
   const host = `${safeId}.${DEPLOY_DOMAIN}`;
 
   return `services:
   web:
-    image: nginx:alpine
+    build: .
     container_name: ${safeId}
-    volumes:
-      - ${hostCodeDir}:/usr/share/nginx/html:ro
-      - ${hostNginxConf}:/etc/nginx/conf.d/default.conf:ro
     networks:
       - sabr-net
     labels:
@@ -117,7 +87,7 @@ networks:
 `;
 }
 
-function generateNodeCompose(projectId: string, info: ProjectInfo, hostCodeDir: string): { yaml: string; dbPassword: string } {
+function generateNodeCompose(projectId: string, info: ProjectInfo): { yaml: string; dbPassword: string } {
   const safeId = projectId.replace(/-/g, "");
   const host = `${safeId}.${DEPLOY_DOMAIN}`;
   const dbHost = `${safeId}-db.${DEPLOY_DOMAIN}`;
@@ -127,23 +97,20 @@ function generateNodeCompose(projectId: string, info: ProjectInfo, hostCodeDir: 
   const dbUser = `u_${safeId.slice(0, 14)}`;
   const appPort = info.appPort;
 
-  // App service: use student's Dockerfile if present, otherwise plain node image
-  const appImage = info.hasDockerfile
-    ? `    build: ${hostCodeDir}`
-    : `    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - ${hostCodeDir}:/app
-    command: sh -c "echo 'Waiting for MySQL…' && until nc -z db 3306 2>/dev/null; do sleep 1; done && sleep 3 && npm install && npm start"`;
+  // App service: student Dockerfile → build ./code, else → build from generated Dockerfile
+  const appBuild = info.hasDockerfile
+    ? `    build: ./code`
+    : `    build: .
+    command: sh -c "echo 'Waiting for MySQL…' && until nc -z db 3306 2>/dev/null; do sleep 1; done && sleep 3 && npm start"`;
 
-  // Mount db.sql for init if the student provides one
-  const dbInitVolume = info.hasDbSql
-    ? `\n      - ${hostCodeDir}/db.sql:/docker-entrypoint-initdb.d/db.sql:ro`
-    : "";
+  // DB: custom build if db.sql provided (to COPY init script), else standard image
+  const dbImage = info.hasDbSql
+    ? `    build:\n      context: .\n      dockerfile: Dockerfile.mysql`
+    : `    image: mysql:8.0`;
 
   const yaml = `services:
   app:
-${appImage}
+${appBuild}
     container_name: ${safeId}
     environment:
       - PORT=${appPort}
@@ -167,7 +134,7 @@ ${appImage}
       - "traefik.http.services.${safeId}.loadbalancer.server.port=${appPort}"
 
   db:
-    image: mysql:8.0
+${dbImage}
     container_name: ${safeId}-mysql
     command: --default-authentication-plugin=mysql_native_password
     environment:
@@ -176,7 +143,7 @@ ${appImage}
       - MYSQL_USER=${dbUser}
       - MYSQL_PASSWORD=${dbPassword}
     volumes:
-      - db_data:/var/lib/mysql${dbInitVolume}
+      - db_data:/var/lib/mysql
     networks:
       - internal-${safeId}
     healthcheck:
@@ -394,22 +361,39 @@ export class RunnerService {
         }
       }
 
-      // ── Resolve host paths for Docker volume mounts ──
-      const hostCodeDir = await resolveHostPath(codeDir);
-      await log(workspace, `Host code path: ${hostCodeDir}`);
+      // ── Clean up archive to shrink Docker build context ──
+      await rm(archivePath, { force: true }).catch(() => {});
 
       if (info.type === "nodejs") {
         // ── Node.js + MySQL deploy ─────────
-        const { yaml } = generateNodeCompose(projectId, info, hostCodeDir);
+        if (!info.hasDockerfile) {
+          await Bun.write(join(workspace, "Dockerfile"),
+`FROM node:20-alpine
+WORKDIR /app
+COPY code/ ./
+RUN npm install
+`);
+        }
+        if (info.hasDbSql) {
+          await Bun.write(join(workspace, "Dockerfile.mysql"),
+`FROM mysql:8.0
+COPY code/db.sql /docker-entrypoint-initdb.d/init.sql
+`);
+        }
+        const { yaml } = generateNodeCompose(projectId, info);
         await Bun.write(join(workspace, "docker-compose.yml"), yaml);
         await log(workspace, "Generated Node.js docker-compose.yml");
       } else {
         // ── Static site deploy ─────────────
         await cp(NGINX_CONF_PATH, join(workspace, "nginx.conf"));
-        const hostNginxConf = await resolveHostPath(join(workspace, "nginx.conf"));
+        await Bun.write(join(workspace, "Dockerfile"),
+`FROM nginx:alpine
+COPY code/ /usr/share/nginx/html/
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+`);
         await Bun.write(
           join(workspace, "docker-compose.yml"),
-          generateStaticCompose(projectId, hostCodeDir, hostNginxConf),
+          generateStaticCompose(projectId),
         );
         await log(workspace, "Generated static docker-compose.yml");
       }
