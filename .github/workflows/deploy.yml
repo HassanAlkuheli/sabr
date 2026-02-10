@@ -55,12 +55,12 @@ jobs:
       - name: Create .env file with full configuration
         env:
           # Secrets
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
-          PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-          SEED_PASSWORD: ${{ secrets.SEED_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'dev_secret_key_change_in_prod' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'postgresW' }}
+          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD || 'minioadmin' }}
+          PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD || 'admin' }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD || 'securePass123!' }}
+          SEED_PASSWORD: ${{ secrets.SEED_PASSWORD || 'securePass123!' }}
           
           # Configurable values (Secrets with defaults)
           ACME_EMAIL: ${{ secrets.ACME_EMAIL || 'admin@sabr.haskify.com' }}
