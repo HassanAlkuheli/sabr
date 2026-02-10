@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "file_size" integer;

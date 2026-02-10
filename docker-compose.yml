@@ -1,0 +1,104 @@
+name: sabr
+
+services:
+  # ────────────────────────────────────────────
+  # Traefik – Reverse Proxy & Automatic Router
+  # ────────────────────────────────────────────
+  traefik:
+    image: traefik:v3.2
+    container_name: traefik
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=sabr-net
+      - --entryPoints.web.address=:80
+    ports:
+      - "80:80" # HTTP traffic
+      - "8080:8080" # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - sabr-net
+    restart: unless-stopped
+
+  # ────────────────────────────────────────────
+  # PostgreSQL – Application Database
+  # ────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-sabr}
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - sabr-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ────────────────────────────────────────────
+  # MinIO – S3-Compatible Object Storage
+  # ────────────────────────────────────────────
+  minio:
+    image: minio/minio
+    container_name: minio
+    command: server /data --console-address ":9001"
+    env_file: .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9002:9000" # S3 API (host 9002 -> container 9000)
+      - "9003:9001" # MinIO Console (host 9003 -> container 9001)
+    volumes:
+      - miniodata:/data
+    networks:
+      - sabr-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ────────────────────────────────────────────
+  # pgAdmin – PostgreSQL Web Admin
+  # ────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:9.12
+    container_name: pgadmin
+    env_file: .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@sabr.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin123}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+
+    ports:
+      - "5051:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - sabr-net
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  miniodata:
+  pgadmin_data:
+
+networks:
+  sabr-net:
+    name: sabr-net
+    driver: bridge

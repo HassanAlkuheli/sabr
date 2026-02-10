@@ -1,0 +1,459 @@
+/* ── Imports (must be first for Sass @use rules) ── */
+@use "tailwindcss" as *;
+@use "primeicons/primeicons.css" as *;
+
+/* ── Force class-based dark mode (not media query) ── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Custom theme tokens (60-30-10 color scheme) ── */
+@theme {
+  /* 60% – Base / Background */
+  --color-primary: #0f172a;          /* Slate 900 – text on light */
+  --color-secondary: #475569;        /* Slate 600 – muted text */
+  --color-surface: #f8fafc;          /* Slate 50 – page bg */
+
+  /* 30% – Accent / CTA */
+  --color-accent: #f59e0b;           /* Amber 500 */
+
+  /* 10% – Highlight text */
+  --color-highlight: #ffffff;        /* White text on dark */
+
+  /* Sidebar */
+  --color-sidebar: #0f172a;          /* Slate 900 */
+  --color-sidebar-hover: #1e293b;    /* Slate 800 */
+  --color-sidebar-active: #334155;   /* Slate 700 */
+
+  /* Cards / Panels */
+  --color-card: #ffffff;
+  --color-card-border: #e2e8f0;      /* Slate 200 */
+}
+
+/* ── Global resets ──────────────────────────── */
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-surface);
+  color: var(--color-secondary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ── Layout base ────────────────────────────── */
+body {
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ══════════════════════════════════════════════
+   DARK MODE
+   ══════════════════════════════════════════════ */
+
+html.dark {
+  --color-primary: #e2e8f0;          /* Slate 200 – text on dark */
+  --color-secondary: #94a3b8;        /* Slate 400 – muted text */
+  --color-surface: #0f172a;          /* Slate 900 – page bg */
+  --color-card: #1e293b;             /* Slate 800 */
+  --color-card-border: #334155;      /* Slate 700 */
+  --color-sidebar: #020617;          /* Slate 950 */
+  --color-sidebar-hover: #1e293b;
+  --color-sidebar-active: #334155;
+
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0f172a;
+  color: #94a3b8;
+}
+
+/* ── Card / panel overrides ─────────────────── */
+html.dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+html.dark .border-slate-200 {
+  border-color: #334155 !important;
+}
+
+html.dark .text-primary {
+  color: #e2e8f0 !important;
+}
+
+html.dark .text-secondary {
+  color: #94a3b8 !important;
+}
+
+html.dark .bg-slate-50 {
+  background-color: #0f172a !important;
+}
+
+html.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+html.dark .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+html.dark .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+html.dark .text-blue-700 {
+  color: #93c5fd !important;
+}
+
+html.dark .text-blue-900 {
+  color: #bfdbfe !important;
+}
+
+html.dark .text-blue-600 {
+  color: #93c5fd !important;
+}
+
+html.dark .border-blue-200 {
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+html.dark .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+html.dark .text-blue-400 {
+  color: #60a5fa !important;
+}
+
+html.dark .bg-accent\/10 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+
+html.dark .bg-accent\/20 {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+html.dark .text-amber-700 {
+  color: #fbbf24 !important;
+}
+
+/* Status badges in dark */
+html.dark .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+html.dark .text-emerald-700 {
+  color: #6ee7b7 !important;
+}
+
+html.dark .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+html.dark .text-red-700 {
+  color: #fca5a5 !important;
+}
+
+html.dark .text-emerald-600 {
+  color: #34d399 !important;
+}
+
+/* Buttons / inputs in dark */
+html.dark .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+html.dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .border-slate-300 {
+  border-color: #475569 !important;
+}
+
+html.dark .bg-slate-200 {
+  background-color: #334155 !important;
+}
+
+html.dark .hover\:bg-slate-100:hover {
+  background-color: #334155 !important;
+}
+
+/* PrimeNG component dark overrides */
+html.dark .p-datatable .p-datatable-header {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html.dark .p-datatable .p-datatable-thead > tr > th {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+html.dark .p-datatable .p-datatable-tbody > tr {
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+html.dark .p-datatable .p-datatable-tbody > tr > td {
+  border-color: #334155;
+}
+
+html.dark .p-datatable .p-datatable-footer {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html.dark .p-paginator {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html.dark .p-dialog .p-dialog-header {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+html.dark .p-dialog .p-dialog-content {
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+html.dark .p-dialog .p-dialog-footer {
+  background: #1e293b;
+}
+
+/* ── Match p-select to p-inputtext in both modes ── */
+.p-select {
+  background: var(--p-inputtext-background, #ffffff);
+  border-color: var(--p-inputtext-border-color, #d1d5db);
+  color: var(--p-inputtext-color, inherit);
+}
+
+html.dark .p-inputtext {
+  background: #0f172a;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+html.dark .p-select {
+  background: #0f172a;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+html.dark .p-tree {
+  background: transparent;
+  color: #cbd5e1;
+}
+
+html.dark .p-tree .p-tree-node-content:hover {
+  background: #334155;
+}
+
+html.dark .p-tab:not(.p-tab-active) {
+  color: #94a3b8;
+}
+
+html.dark .p-tabpanels,
+html.dark .p-tabpanel {
+  background: transparent !important;
+  color: #cbd5e1;
+}
+
+html.dark .p-tablist {
+  background: transparent;
+}
+
+html.dark .p-message {
+  border-color: #475569;
+}
+
+/* Header in dark */
+html.dark header.bg-white,
+html.dark .bg-white.border-b {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+/* ── Glow orb effect ────────────────────── */
+@keyframes glowDrift {
+  0%   { transform: translateX(-50%) translateY(0); }
+  30%  { transform: translateX(-46%) translateY(8px); }
+  60%  { transform: translateX(-54%) translateY(-6px); }
+  100% { transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes glowDriftAlt {
+  0%   { transform: translateX(-50%) translateY(0); }
+  25%  { transform: translateX(-55%) translateY(-10px); }
+  50%  { transform: translateX(-48%) translateY(6px); }
+  75%  { transform: translateX(-52%) translateY(-4px); }
+  100% { transform: translateX(-50%) translateY(0); }
+}
+
+.glow-orb {
+  position: absolute;
+  top: -14rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70rem;
+  height: 50rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 30%,
+    rgba(5, 150, 105, 0.30) 0%,
+    rgba(5, 150, 105, 0.16) 30%,
+    rgba(5, 150, 105, 0.05) 60%,
+    transparent 85%
+  );
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(50px);
+  animation: glowDrift 8s ease-in-out infinite;
+}
+
+.glow-orb-amber {
+  position: absolute;
+  top: -8rem;
+  left: 75%;
+  transform: translateX(-50%);
+  width: 52rem;
+  height: 40rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse 65% 50% at 50% 35%,
+    rgba(245, 158, 11, 0.24) 0%,
+    rgba(245, 158, 11, 0.12) 30%,
+    rgba(245, 158, 11, 0.04) 60%,
+    transparent 85%
+  );
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(55px);
+  animation: glowDriftAlt 10s ease-in-out infinite;
+}
+
+html[dir="rtl"] .glow-orb {
+  left: 50%;
+  right: auto;
+}
+
+html[dir="rtl"] .glow-orb-amber {
+  left: 28%;
+  right: auto;
+}
+
+html.dark .glow-orb {
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 30%,
+    rgba(16, 185, 129, 0.28) 0%,
+    rgba(16, 185, 129, 0.14) 30%,
+    rgba(5, 150, 105, 0.04) 60%,
+    transparent 85%
+  );
+}
+
+html.dark .glow-orb-amber {
+  background: radial-gradient(
+    ellipse 65% 50% at 50% 35%,
+    rgba(251, 191, 36, 0.22) 0%,
+    rgba(251, 191, 36, 0.10) 30%,
+    rgba(245, 158, 11, 0.03) 60%,
+    transparent 85%
+  );
+}
+
+/* ── PrimeNG dialog z-index (above sidebar z-50) ── */
+.p-dialog-mask {
+  z-index: 100 !important;
+}
+
+/* ── RTL: flip directional icons ── */
+html[dir="rtl"] .pi-chevron-right,
+html[dir="rtl"] .pi-chevron-left,
+html[dir="rtl"] .pi-arrow-right,
+html[dir="rtl"] .pi-arrow-left,
+html[dir="rtl"] .pi-angle-right,
+html[dir="rtl"] .pi-angle-left,
+html[dir="rtl"] .pi-angle-double-right,
+html[dir="rtl"] .pi-angle-double-left,
+html[dir="rtl"] .pi-sign-in,
+html[dir="rtl"] .pi-sign-out,
+html[dir="rtl"] .pi-external-link,
+html[dir="rtl"] .pi-upload,
+html[dir="rtl"] .pi-download,
+html[dir="rtl"] .pi-reply {
+  transform: scaleX(-1);
+}
+
+/* ── Neutralize PrimeNG striped odd-row background ── */
+.p-datatable.p-datatable-striped .p-datatable-tbody > tr:nth-child(odd) {
+  background: inherit !important;
+}
+
+/* ── Clip PrimeNG table edges inside rounded containers ── */
+.p-datatable {
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.p-datatable .p-datatable-header {
+  border-radius: inherit;
+}
+
+.p-paginator {
+  border-radius: inherit;
+}
+
+/* Ensure rounded wrapper clips inner content (except tooltips) */
+div[class*="rounded-xl"],
+div[class*="rounded-lg"] {
+  overflow: clip;
+}
+
+/* PrimeNG tooltips render in body, but button text inside tables can truncate.
+   Allow action-cell overflow so icon buttons aren't clipped. */
+.p-datatable .p-datatable-tbody > tr > td:last-child {
+  overflow: visible;
+}
+
+/* ── Match textarea background to input text ── */
+.p-textarea {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: var(--color-primary);
+}
+
+html.dark .p-textarea {
+  background: #0f172a;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+/* ── Scrollbar styling ──────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
