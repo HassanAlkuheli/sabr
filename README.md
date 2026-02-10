@@ -79,3 +79,11 @@ Visit http://localhost:4200/ to access the UI. Login as a professor or student t
 
 ## Contribution
 Feel free to open issues or PRs against the `main` branch. Describe new deployment scenarios, runner hooks, or UI improvements so the platform can serve even more courses.
+
+## Security (important) ⚠️
+- **Never commit `.env` or secrets** to Git. Use `.env` locally and add it to `.gitignore`.
+- **Rotate secrets immediately** if they were committed by mistake: JWT secret, DB passwords, MinIO keys, and any admin passwords.
+- When you rotate JWT secret, restart the backend so existing tokens become invalid and require users to re-authenticate.
+- For public repositories, consider purging secrets from history (we performed a history purge and force-pushed for this repo).
+- Use a secrets manager or CI/CD secret storage for production deployments.
+
