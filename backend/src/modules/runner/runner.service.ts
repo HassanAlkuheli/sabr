@@ -81,7 +81,8 @@ function generateStaticCompose(projectId: string): string {
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.${safeId}.rule=Host(\`${host}\`)"
-      - "traefik.http.routers.${safeId}.entrypoints=web"
+      - "traefik.http.routers.${safeId}.entrypoints=websecure"
+      - "traefik.http.routers.${safeId}.tls.certresolver=letsencrypt"
 
 networks:
   sabr-net:
@@ -106,7 +107,7 @@ function generateNodeCompose(projectId: string, info: ProjectInfo): { yaml: stri
     working_dir: /app
     volumes:
       - ./code:/app
-    command: sh -c "echo 'Waiting for MySQL…' && until nc -z db 3306 2>/dev/null; do sleep 1; done && sleep 3 && npm install && npm start"`;
+    command: sh -c "cd /app && echo 'Waiting for MySQL…' && until nc -z db 3306 2>/dev/null; do sleep 1; done && sleep 3 && npm install && npm start"`;
 
   // Mount db.sql for init if the student provides one
   const dbInitVolume = info.hasDbSql
@@ -134,7 +135,8 @@ ${appImage}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.${safeId}.rule=Host(\`${host}\`)"
-      - "traefik.http.routers.${safeId}.entrypoints=web"
+      - "traefik.http.routers.${safeId}.entrypoints=websecure"
+      - "traefik.http.routers.${safeId}.tls.certresolver=letsencrypt"
       - "traefik.http.services.${safeId}.loadbalancer.server.port=${appPort}"
 
   db:
@@ -173,7 +175,8 @@ ${appImage}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.${safeId}-db.rule=Host(\`${dbHost}\`)"
-      - "traefik.http.routers.${safeId}-db.entrypoints=web"
+      - "traefik.http.routers.${safeId}-db.entrypoints=websecure"
+      - "traefik.http.routers.${safeId}-db.tls.certresolver=letsencrypt"
       - "traefik.http.services.${safeId}-db.loadbalancer.server.port=80"
 
 networks:
@@ -396,8 +399,8 @@ export class RunnerService {
 
       // ── State update ─────────────────────
       const safeId = projectId.replace(/-/g, "");
-      const url = `http://${safeId}.${DEPLOY_DOMAIN}`;
-      const adminUrl = info.type === "nodejs" ? `http://${safeId}-db.${DEPLOY_DOMAIN}` : null;
+      const url = `https://${safeId}.${DEPLOY_DOMAIN}`;
+      const adminUrl = info.type === "nodejs" ? `https://${safeId}-db.${DEPLOY_DOMAIN}` : null;
       const now = new Date();
 
       await db
