@@ -1,0 +1,21 @@
+# Ignore local environment files
+.env
+.env.*
+
+# Node
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Build artifacts
+dist/
+
+# Temporary
+tmp/
+.runners/
