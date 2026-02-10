@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { db } from "../../db";
 import { labs, projects, users } from "../../db/schema";
 import { AppError, NotFoundError } from "../../lib/errors";
@@ -278,23 +278,38 @@ export class LabService {
   static async listStudentsBySections(sectionNumbers: string[]) {
     if (!sectionNumbers.length) return [];
 
-    return db.query.users.findMany({
-      where: and(
-        eq(users.role, "STUDENT"),
-        inArray(users.sectionNumber, sectionNumbers),
-      ),
-      columns: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        status: true,
-        sectionNumber: true,
-        createdAt: true,
-      },
-      orderBy: (users, { asc }) => [asc(users.name)],
-      with: { projects: true },
-    });
+    const students = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        status: users.status,
+        sectionNumber: users.sectionNumber,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "STUDENT"),
+          inArray(users.sectionNumber, sectionNumbers),
+        ),
+      )
+      .orderBy(asc(users.name));
+
+    if (!students.length) return [];
+
+    const studentIds = students.map((s) => s.id);
+    const allProjects = await db
+      .select()
+      .from(projects)
+      .where(inArray(projects.studentId, studentIds))
+      .orderBy(desc(projects.createdAt));
+
+    return students.map((student) => ({
+      ...student,
+      projects: allProjects.filter((p) => p.studentId === student.id),
+    }));
   }
 
   /** List running projects for sections the professor manages. */
