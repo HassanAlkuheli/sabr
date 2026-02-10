@@ -76,10 +76,10 @@ const app = new Elysia()
   })
   .get("/health", async () => {
     try {
-      await db.execute(sql`SELECT 1`);
-      return { status: "ok", db: "connected" };
+      const result = await db.execute(sql`SELECT count(*) as cnt FROM users`);
+      return { status: "ok", db: "connected", users: result[0]?.cnt ?? 0 };
     } catch (e) {
-      return { status: "degraded", db: "disconnected", error: String(e) };
+      return { status: "degraded", db: "error", error: String(e).slice(0, 300) };
     }
   }, {
     detail: {
