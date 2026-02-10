@@ -343,6 +343,9 @@ export class RunnerService {
       // ── Flatten single wrapper directory ───
       await this.flattenSingleDir(codeDir);
 
+      // ── Ensure index.html exists for static sites ──
+      await this.ensureIndexHtml(codeDir, workspace);
+
       // ── Detect project info ──────────────
       const info = await detectProjectInfo(codeDir);
       await log(workspace, `Detected: type=${info.type} dockerfile=${info.hasDockerfile} dbSql=${info.hasDbSql} port=${info.appPort}`);
@@ -528,6 +531,49 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
    * move all its contents up to the parent (codeDir) so index.html
    * is at the root and nginx can serve it directly.
    */
+  /**
+   * If no index.html exists at root, try to create one:
+   * - Single .html file → rename it to index.html
+   * - Multiple .html files → generate a redirect/listing index.html
+   */
+  private static async ensureIndexHtml(codeDir: string, workspace: string): Promise<void> {
+    const indexPath = join(codeDir, "index.html");
+    if (existsSync(indexPath)) return; // already has index.html
+
+    const entries = await readdir(codeDir);
+    const htmlFiles = entries.filter(e => e.endsWith(".html") || e.endsWith(".htm"));
+
+    if (htmlFiles.length === 0) return; // no HTML files at all
+
+    if (htmlFiles.length === 1) {
+      // Single HTML file → rename to index.html
+      const src = join(codeDir, htmlFiles[0]!);
+      await rename(src, indexPath);
+      await log(workspace, `Renamed ${htmlFiles[0]} → index.html`);
+    } else {
+      // Multiple HTML files → create an index that redirects to the first, with links to all
+      const mainFile = htmlFiles[0]!;
+      const links = htmlFiles.map(f => `<li><a href="${f}">${f}</a></li>`).join("\n        ");
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="0; url=${mainFile}">
+  <title>Lab Files</title>
+</head>
+<body>
+  <h2>Lab Files</h2>
+  <ul>
+        ${links}
+  </ul>
+  <p>Redirecting to <a href="${mainFile}">${mainFile}</a>...</p>
+</body>
+</html>`;
+      await writeFile(indexPath, html);
+      await log(workspace, `Created index.html (redirect → ${mainFile}, ${htmlFiles.length} files listed)`);
+    }
+  }
+
   private static async flattenSingleDir(codeDir: string): Promise<void> {
     const entries = await readdir(codeDir);
     // Filter out hidden files like __MACOSX
