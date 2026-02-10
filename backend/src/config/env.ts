@@ -31,8 +31,8 @@ const envSchema = z.object({
   // ── MinIO ────────────────────────
   MINIO_ENDPOINT: z.string().default("localhost"),
   MINIO_PORT: z.coerce.number().default(9000),
-  MINIO_ACCESS_KEY: z.string().default("") ,
-  MINIO_SECRET_KEY: z.string().default("") ,
+  MINIO_ACCESS_KEY: z.string().min(1, "MINIO_ACCESS_KEY is required"),
+  MINIO_SECRET_KEY: z.string().min(1, "MINIO_SECRET_KEY is required"),
   MINIO_USE_SSL: z
     .string()
     .default("false")

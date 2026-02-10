@@ -15,7 +15,11 @@ import { MinioService } from "../lib/minio";
 import { env } from "../config/env";
 import AdmZip from "adm-zip";
 
-const PASSWORD = "password123";
+const PASSWORD = process.env.SEED_PASSWORD;
+if (!PASSWORD) {
+  console.error("ERROR: SEED_PASSWORD environment variable must be set.");
+  process.exit(1);
+}
 const BUCKET = env.MINIO_BUCKET;
 
 // --- Helpers ---
@@ -396,7 +400,7 @@ async function seed() {
   console.log("   Assigned    : " + assignedCount);
   console.log("   Graded      : " + gradedCount);
   console.log("   Sections    : " + SECTIONS.join(", "));
-  console.log("   Password    : " + PASSWORD + " (all accounts)");
+  console.log("   Password    : (from SEED_PASSWORD env var)");
   console.log("   MinIO bucket: " + BUCKET);
   console.log("-----------------------------------");
 

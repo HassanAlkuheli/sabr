@@ -1,0 +1,70 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        env:
+          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          SEED_PASSWORD: ${{ secrets.SEED_PASSWORD }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: PRODUCTION_ENV,ADMIN_PASSWORD,SEED_PASSWORD
+          script_stop: true
+          command_timeout: 30m
+          script: |
+            set -e
+
+            APP_DIR="/opt/sabr"
+
+            # ── First-time setup ──
+            if [ ! -d "$APP_DIR" ]; then
+              echo "🔧 First-time setup: cloning repository..."
+              git clone https://github.com/HassanAlkuheli/sabr.git "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+
+            # ── Pull latest code ──
+            echo "📥 Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            # ── Write .env from GitHub secret ──
+            echo "📝 Writing .env..."
+            printf '%s\n' "$PRODUCTION_ENV" > .env
+
+            # ── Build and deploy ──
+            echo "🚀 Building and deploying with Docker Compose..."
+            docker compose -f docker-compose.prod.yml build --no-cache
+            docker compose -f docker-compose.prod.yml up -d
+
+            # ── Wait for services to be healthy ──
+            echo "⏳ Waiting for services to be ready..."
+            sleep 15
+
+            # ── Run database migrations ──
+            echo "🗃️ Running database migrations..."
+            docker exec sabr-backend bunx drizzle-kit migrate || echo "Migration may have already been applied"
+
+            # ── Seed admin account ──
+            echo "👤 Seeding admin account..."
+            docker exec -e ADMIN_PASSWORD="$ADMIN_PASSWORD" sabr-backend bun run src/scripts/seed-admin.ts || echo "Admin may already exist"
+
+            # ── Seed production data (professor, student, labs, projects) ──
+            echo "🌱 Seeding production data..."
+            docker exec -e SEED_PASSWORD="$SEED_PASSWORD" sabr-backend bun run src/scripts/seed-production.ts || echo "Production data may already exist"
+
+            echo "✅ Deployment complete!"
+            echo "   Frontend: https://sabr.haskify.com"
+            echo "   API:      https://sabr.haskify.com/api"

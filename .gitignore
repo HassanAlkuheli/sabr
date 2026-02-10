@@ -1,6 +1,7 @@
 # Ignore local environment files
 .env
 .env.*
+!.env.example
 
 # Node
 node_modules/
@@ -15,7 +16,13 @@ logs/
 
 # Build artifacts
 dist/
+frontend/dist/
 
 # Temporary
 tmp/
 .runners/
+
+# Utility scripts
+*.ps1
+create-labs.*
+submit-labs.*
