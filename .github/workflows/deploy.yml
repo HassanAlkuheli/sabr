@@ -125,12 +125,7 @@ jobs:
       - name: Deploy with Docker Compose
         run: |
           echo "🚀 Deploying with Docker Compose..."
-          # Load .env to ensure shell has variables (redundant with .env file but safe)
-          set -o allexport
-          source .env
-          set +o allexport
-          
-          docker compose -f docker-compose.prod.yml up -d --force-recreate
+          docker compose -f docker-compose.prod.yml --env-file .env up -d --force-recreate
           echo "Waiting for services to be healthy..."
           sleep 20
 
