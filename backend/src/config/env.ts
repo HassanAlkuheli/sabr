@@ -29,7 +29,7 @@ if (!process.env.DATABASE_URL && process.env.POSTGRES_PASSWORD) {
   const port = process.env.POSTGRES_PORT || "5432";
   const db = encodeURIComponent(process.env.POSTGRES_DB || "sabr");
 
-  process.env.DATABASE_URL = `postgres://${user}:${pass}@${host}:${port}/${db}`;
+  process.env.DATABASE_URL = `postgresql://${user}:${pass}@${host}:${port}/${db}`;
   console.log(`🔧 Constructed DATABASE_URL from environment variables (host: ${host})`);
 }
 
