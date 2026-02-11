@@ -65,7 +65,12 @@ export class AiService {
     }
 
     // Collect file contents (skip images, node_modules, large files)
-    const filesToScan = collectScanFiles(structure, "");
+    // ViewerService.getStructure returns an array of top-level nodes, not a single root node
+    const filesToScan: string[] = [];
+    const nodes = Array.isArray(structure) ? structure : [structure];
+    for (const node of nodes) {
+      filesToScan.push(...collectScanFiles(node, ""));
+    }
     const fileContents: { path: string; content: string }[] = [];
     let totalChars = 0;
     const MAX_CHARS = 30000; // Stay within token limits

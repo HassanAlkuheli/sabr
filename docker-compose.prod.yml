@@ -103,6 +103,12 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_USE_SSL: "false"
       MINIO_BUCKET: ${MINIO_BUCKET:-sabr}
+      # AI scanning (LangChain / OpenAI)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Email (Password Reset)
+      SMTP_EMAIL: ${SMTP_EMAIL:-}
+      SMTP_APP_PASSWORD: ${SMTP_APP_PASSWORD:-}
+      FRONTEND_URL: ${FRONTEND_URL:-https://sabr.haskify.com}
     volumes:
       # Backend needs Docker socket to manage student containers
       - /var/run/docker.sock:/var/run/docker.sock

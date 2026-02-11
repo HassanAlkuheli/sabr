@@ -129,10 +129,6 @@ jobs:
           # Stop existing services first
           docker compose -f docker-compose.prod.yml down 2>/dev/null || true
           
-          # Reset postgres volume to reinitialize with current password
-          # This is safe because data is re-seeded in the migrate-and-seed step
-          docker volume rm sabr_pgdata 2>/dev/null || true
-          
           docker compose -f docker-compose.prod.yml --env-file .env up -d --force-recreate
           echo "Waiting for services to be healthy..."
           sleep 20
