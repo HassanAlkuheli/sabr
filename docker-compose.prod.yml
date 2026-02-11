@@ -109,6 +109,8 @@ services:
       SMTP_EMAIL: ${SMTP_EMAIL:-}
       SMTP_APP_PASSWORD: ${SMTP_APP_PASSWORD:-}
       FRONTEND_URL: ${FRONTEND_URL:-https://sabr.haskify.com}
+      # Deep Scan Worker
+      WORKER_URL: http://sabr-worker:3001
     volumes:
       # Backend needs Docker socket to manage student containers
       - /var/run/docker.sock:/var/run/docker.sock
@@ -128,6 +130,18 @@ services:
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
       - "traefik.http.services.backend.loadbalancer.server.port=3000"
+
+  # ── Deep Scan Worker (Playwright) ───────
+  worker:
+    image: sabr-worker:latest
+    container_name: sabr-worker
+    environment:
+      PORT: 3001
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium
+    networks:
+      - sabr-net
+    restart: unless-stopped
+    # Internal only — no Traefik labels needed
 
   # ── Frontend (Angular + nginx) ──────────────
   frontend:

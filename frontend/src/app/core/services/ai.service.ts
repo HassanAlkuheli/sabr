@@ -18,6 +18,8 @@ export interface DeepScanResult {
   consoleErrors: string[];
   interactiveTests: { description: string; passed: boolean; details: string }[];
   missingBehaviors: string[];
+  screenshots?: string[];   // base64 PNG
+  pagesVisited?: string[];  // URLs visited
 }
 
 export interface CachedScanData {

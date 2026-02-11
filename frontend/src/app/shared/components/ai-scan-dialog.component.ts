@@ -124,6 +124,7 @@ import { DatePipe } from '@angular/common';
             <div class="flex flex-col items-center gap-4 py-8">
               <i class="pi pi-spin pi-globe text-4xl text-primary"></i>
               <p class="text-sm text-secondary">{{ 'ai.deepScanning' | translate }}</p>
+              <p class="text-xs text-secondary text-center">{{ 'ai.deepScanWait' | translate }}</p>
               <p-progressBar mode="indeterminate" styleClass="w-full" />
             </div>
           } @else if (errorDeep()) {
@@ -212,13 +213,44 @@ import { DatePipe } from '@angular/common';
                   </ul>
                 </div>
               }
+
+              <!-- Pages visited -->
+              @if (deepScanResult()!.pagesVisited?.length) {
+                <div>
+                  <h4 class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-1">
+                    <i class="pi pi-globe"></i> {{ 'ai.pagesVisited' | translate }}
+                  </h4>
+                  <ul class="list-disc ltr:ml-5 rtl:mr-5 space-y-1 text-xs font-mono">
+                    @for (p of deepScanResult()!.pagesVisited!; track p) {
+                      <li>{{ p }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+
+              <!-- Screenshots -->
+              @if (deepScanResult()!.screenshots?.length) {
+                <div>
+                  <h4 class="text-sm font-semibold text-cyan-600 dark:text-cyan-400 mb-2 flex items-center gap-1">
+                    <i class="pi pi-image"></i> {{ 'ai.screenshots' | translate }}
+                  </h4>
+                  <div class="grid grid-cols-2 gap-2">
+                    @for (ss of deepScanResult()!.screenshots!; track $index) {
+                      <img [src]="'data:image/png;base64,' + ss"
+                           class="rounded border border-slate-200 dark:border-slate-600 cursor-pointer hover:opacity-80 transition-opacity"
+                           (click)="openScreenshot(ss)"
+                           alt="Screenshot {{ $index + 1 }}" />
+                    }
+                  </div>
+                </div>
+              }
             </div>
           } @else {
             <!-- No deep scan yet -->
             <div class="flex flex-col items-center gap-4 py-8">
               <i class="pi pi-globe text-4xl text-secondary"></i>
               <p class="text-sm text-secondary">{{ 'ai.noDeepScanYet' | translate }}</p>
-              <p class="text-xs text-secondary">{{ 'ai.deepScanHint' | translate }}</p>
+              <p class="text-xs text-secondary text-center">{{ 'ai.deepScanHint' | translate }}</p>
               <p-button [label]="'ai.runDeepScan' | translate" icon="pi pi-play" severity="help" (onClick)="runDeepScan()" />
             </div>
           }
@@ -321,9 +353,18 @@ export class AiScanDialogComponent {
       },
       error: (err) => {
         this.loadingDeep.set(false);
-        this.errorDeep.set(err?.error?.message ?? 'Deep scan failed. Is the project running?');
+        this.errorDeep.set(err?.error?.message ?? 'Deep scan failed. Please try again.');
       },
     });
+  }
+
+  /** Open a screenshot in a new tab */
+  openScreenshot(base64: string) {
+    const win = window.open();
+    if (win) {
+      win.document.write(`<img src="data:image/png;base64,${base64}" style="max-width:100%;height:auto" />`);
+      win.document.title = 'Deep Scan Screenshot';
+    }
   }
 
   // When dialog opens, load cached results; reset if project changed

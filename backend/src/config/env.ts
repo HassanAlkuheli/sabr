@@ -65,6 +65,9 @@ const envSchema = z.object({
 
   // ── AI (LangChain / OpenAI) ────
   OPENAI_API_KEY: z.string().optional(),
+
+  // ── Deep Scan Worker ─────────
+  WORKER_URL: z.string().default("http://sabr-worker:3001"),
 });
 
 const parsed = envSchema.safeParse(process.env);

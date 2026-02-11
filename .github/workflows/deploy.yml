@@ -40,6 +40,13 @@ jobs:
             -f frontend/Dockerfile \
             frontend/
 
+      - name: Build worker image
+        run: |
+          docker build --no-cache \
+            --tag sabr-worker:latest \
+            -f worker/Dockerfile \
+            worker/
+
   # ============================================
   # STEP 2: Deploy
   # ============================================

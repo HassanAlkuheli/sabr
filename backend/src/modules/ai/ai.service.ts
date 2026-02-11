@@ -12,9 +12,10 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { db } from "../../db";
-import { projects, labs, users } from "../../db/schema";
+import { projects, labs } from "../../db/schema";
 import { eq } from "drizzle-orm";
 import { ViewerService } from "../viewer/viewer.service";
+import { RunnerService } from "../runner/runner.service";
 import { AppError, NotFoundError } from "../../lib/errors";
 import { env } from "../../config/env";
 
@@ -34,7 +35,8 @@ export interface DeepScanResult {
   consoleErrors: string[];
   interactiveTests: { description: string; passed: boolean; details: string }[];
   missingBehaviors: string[];
-  screenshots?: string[]; // base64 thumbnails (optional)
+  screenshots?: string[]; // base64 PNG thumbnails
+  pagesVisited?: string[];
 }
 
 // ── Service ──────────────────────────────────
@@ -207,13 +209,15 @@ Analyze how well this submission meets the lab requirements.`;
   }
 
   // ════════════════════════════════════════════
-  //  Deep Scan (browser-based behavioral test)
+  //  Deep Scan (Playwright-based behavioral test)
   // ════════════════════════════════════════════
 
   /**
-   * Deep scan: fetches the deployed project's HTML, discovers links/buttons/forms,
-   * then asks the LLM to evaluate the page behavior against the lab requirements.
-   * Does NOT require a headless browser — uses HTTP fetch + DOM parsing via LLM.
+   * Deep scan using the Playwright worker:
+   *  1. Auto-start the project if not running
+   *  2. Call the Playwright worker to run browser-based tests
+   *  3. Persist results to DB
+   *  4. Auto-stop the project if it was stopped before scanning
    */
   static async deepScanProject(projectId: string): Promise<DeepScanResult> {
     // ── Fetch project + lab ──
@@ -222,171 +226,133 @@ Analyze how well this submission meets the lab requirements.`;
     });
     if (!project) throw new NotFoundError("Project not found");
     if (!project.labId) throw new AppError("Project is not assigned to a lab");
-    if (!project.url) throw new AppError("Project must be deployed (running) to perform a deep scan");
-    if (project.status !== "RUNNING") throw new AppError("Project must be running to perform a deep scan");
 
     const lab = await db.query.labs.findFirst({
       where: eq(labs.id, project.labId),
     });
     if (!lab) throw new NotFoundError("Lab not found");
 
-    // ── Fetch the deployed pages ──
-    const pages: { url: string; html: string; status: number }[] = [];
-    const visited = new Set<string>();
-    const baseUrl = project.url.replace(/\/$/, "");
+    // ── Auto-start project if not running ──
+    const wasAlreadyRunning = project.status === "RUNNING";
+    let projectUrl = project.url;
 
-    // Fetch main page
-    const mainPage = await fetchPage(baseUrl);
-    pages.push(mainPage);
-    visited.add(baseUrl);
-
-    // Discover internal links from the main page (max 5 additional pages)
-    const links = extractLinks(mainPage.html, baseUrl);
-    for (const link of links.slice(0, 5)) {
-      if (visited.has(link)) continue;
-      visited.add(link);
-      try {
-        const page = await fetchPage(link);
-        pages.push(page);
-      } catch {
-        // Skip unreachable pages
+    if (!wasAlreadyRunning) {
+      if (!project.minioSourcePath) {
+        throw new AppError("No source file uploaded — cannot start project for deep scan");
       }
+
+      console.log(`🔬 Deep scan: auto-starting project ${projectId}...`);
+      try {
+        const { url } = await RunnerService.deployProject(project.studentId, projectId);
+        projectUrl = url;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new AppError(`Could not start project for deep scan: ${msg}`);
+      }
+
+      // Wait a few seconds for the project to be fully ready
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
 
-    // ── Build page summaries for LLM ──
-    const pageSummaries = pages.map((p) => {
-      // Trim HTML to keep within token limits (keep first 8000 chars per page)
-      const trimmedHtml = p.html.length > 8000
-        ? p.html.slice(0, 8000) + "\n... [truncated]"
-        : p.html;
-      return `--- ${p.url} (HTTP ${p.status}) ---\n${trimmedHtml}`;
-    }).join("\n\n");
+    if (!projectUrl) {
+      throw new AppError("Project has no URL — deploy may have failed");
+    }
 
-    // ── Build prompt ──
-    const systemPrompt = `You are an expert web application tester and university lab grading assistant.
-You are given the HTML content of a deployed student web project and the lab requirements.
-Your job is to evaluate the BEHAVIOR and FUNCTIONALITY of the deployed site.
-
-Analyze:
-1. Does the main page load correctly (HTTP 200, has content)?
-2. Are there any visible errors in the HTML (broken tags, missing resources, error messages)?
-3. Check interactive elements (forms, buttons, links, navigation) — do they appear functional?
-4. Does the page structure match what the lab requirements expect?
-5. Are required pages/routes present and reachable?
-
-Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
-{
-  "matchPercentage": <number 0-100>,
-  "summary": "<2-3 sentence behavioral assessment>",
-  "pageLoads": <boolean - does the main page load with content?>,
-  "consoleErrors": ["<any error messages found in the HTML>", ...],
-  "interactiveTests": [
-    { "description": "<what was tested>", "passed": <boolean>, "details": "<result details>" },
-    ...
-  ],
-  "missingBehaviors": ["<expected behaviors from lab requirements that are missing>", ...]
-}
-
-Be thorough. Check forms, navigation, links, images, responsive design hints, and JavaScript inclusion.`;
-
-    const userPrompt = `## Lab: ${lab.name}
-
-### Lab Requirements:
-${lab.description || "No description provided."}
-
-### Max Grade: ${lab.maxGrade}
-
-### Deployed Pages (${pages.length} pages crawled):
-${pageSummaries}
-
-Analyze the deployed behavior against the lab requirements.`;
-
-    // ── Call LLM ──
-    const model = AiService.getModel(3000);
-    const response = await model.invoke([
-      new SystemMessage(systemPrompt),
-      new HumanMessage(userPrompt),
-    ]);
-
-    // ── Parse ──
-    const text = typeof response.content === "string" ? response.content : String(response.content);
+    // ── Call Playwright worker ──
+    const workerUrl = env.WORKER_URL || "http://sabr-worker:3001";
     let deepResult: DeepScanResult;
 
     try {
-      const cleaned = text.replace(/```json?\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(cleaned);
+      console.log(`🔬 Calling Playwright worker at ${workerUrl}/deep-scan for ${projectUrl}`);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90_000); // 90s total timeout
+
+      const workerResponse = await fetch(`${workerUrl}/deep-scan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: projectUrl,
+          labName: lab.name,
+          labDescription: lab.description || "",
+          maxGrade: lab.maxGrade,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!workerResponse.ok) {
+        const text = await workerResponse.text();
+        throw new Error(`Worker returned ${workerResponse.status}: ${text}`);
+      }
+
+      const workerData = (await workerResponse.json()) as {
+        success: boolean;
+        data?: any;
+        message?: string;
+      };
+
+      if (!workerData.success || !workerData.data) {
+        throw new Error(workerData.message || "Worker returned no data");
+      }
+
+      const d = workerData.data;
       deepResult = {
-        matchPercentage: Math.max(0, Math.min(100, Number(parsed.matchPercentage) || 0)),
-        summary: String(parsed.summary || "Deep scan complete."),
-        pageLoads: Boolean(parsed.pageLoads),
-        consoleErrors: Array.isArray(parsed.consoleErrors) ? parsed.consoleErrors.map(String) : [],
-        interactiveTests: Array.isArray(parsed.interactiveTests)
-          ? parsed.interactiveTests.map((t: any) => ({
+        matchPercentage: Math.max(0, Math.min(100, Number(d.matchPercentage) || 0)),
+        summary: String(d.summary || "Deep scan complete."),
+        pageLoads: Boolean(d.pageLoads),
+        consoleErrors: Array.isArray(d.consoleErrors) ? d.consoleErrors.map(String) : [],
+        interactiveTests: Array.isArray(d.interactiveTests)
+          ? d.interactiveTests.map((t: any) => ({
               description: String(t.description || ""),
               passed: Boolean(t.passed),
               details: String(t.details || ""),
             }))
           : [],
-        missingBehaviors: Array.isArray(parsed.missingBehaviors) ? parsed.missingBehaviors.map(String) : [],
+        missingBehaviors: Array.isArray(d.missingBehaviors) ? d.missingBehaviors.map(String) : [],
+        screenshots: Array.isArray(d.screenshots) ? d.screenshots.slice(0, 5) : [],
+        pagesVisited: Array.isArray(d.pagesVisited) ? d.pagesVisited.map(String) : [],
       };
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("🔴 Playwright worker call failed:", msg);
+
       deepResult = {
         matchPercentage: 0,
-        summary: text.slice(0, 500),
+        summary: `Deep scan failed: ${msg}`,
         pageLoads: false,
-        consoleErrors: ["Could not parse AI response"],
+        consoleErrors: [],
         interactiveTests: [],
-        missingBehaviors: [],
+        missingBehaviors: ["Deep scan worker could not be reached or timed out"],
+        screenshots: [],
+        pagesVisited: [],
       };
     }
 
-    // ── Persist to DB ──
+    // ── Persist to DB (strip screenshots to keep jsonb small) ──
+    const dbResult = {
+      ...deepResult,
+      screenshots: undefined, // Don't store large base64 images in DB
+    };
     await db
       .update(projects)
-      .set({ deepScanResult: deepResult, deepScanAt: new Date(), updatedAt: new Date() })
+      .set({ deepScanResult: dbResult, deepScanAt: new Date(), updatedAt: new Date() })
       .where(eq(projects.id, projectId));
+
+    // ── Auto-stop if we started it ──
+    if (!wasAlreadyRunning) {
+      console.log(`🔬 Deep scan: auto-stopping project ${projectId}...`);
+      try {
+        await RunnerService.stopProject(project.studentId, projectId);
+      } catch (err) {
+        console.error("⚠️ Failed to auto-stop project after deep scan:", err);
+        // Don't throw — the scan still succeeded
+      }
+    }
 
     return deepResult;
   }
-}
-
-// ── Helper: fetch a page's HTML ──
-async function fetchPage(url: string): Promise<{ url: string; html: string; status: number }> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { "User-Agent": "SabrDeepScan/1.0" },
-      redirect: "follow",
-    });
-    clearTimeout(timeout);
-    const html = await res.text();
-    return { url, html: html.slice(0, 50000), status: res.status };
-  } catch {
-    return { url, html: "", status: 0 };
-  }
-}
-
-// ── Helper: extract internal links from HTML ──
-function extractLinks(html: string, baseUrl: string): string[] {
-  const links: string[] = [];
-  const hrefRegex = /href=["']([^"'#]+)["']/gi;
-  let match: RegExpExecArray | null;
-  while ((match = hrefRegex.exec(html)) !== null) {
-    let href = match[1]!;
-    // Skip external, mailto, tel, javascript links
-    if (href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:")) continue;
-    if (href.startsWith("http") && !href.startsWith(baseUrl)) continue;
-    // Resolve relative URLs
-    if (!href.startsWith("http")) {
-      href = href.startsWith("/") ? `${baseUrl}${href}` : `${baseUrl}/${href}`;
-    }
-    // Remove query strings and fragments
-    href = href.split("?")[0]!.split("#")[0]!;
-    if (!links.includes(href)) links.push(href);
-  }
-  return links;
 }
 
 // ── Helper: recursively collect scannable file paths ──
