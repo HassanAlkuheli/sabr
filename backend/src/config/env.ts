@@ -19,21 +19,18 @@ if (await envFile.exists()) {
   }
 }
 
-// If DATABASE_URL is not provided, attempt to construct it from
-// individual POSTGRES_* environment variables (useful for CI/CD).
-// NOTE: This uses POSTGRES_PASSWORD when available — prefer setting
-// a full DATABASE_URL in production secrets for clarity.
-if (!process.env.DATABASE_URL) {
-  const pgPass = process.env.POSTGRES_PASSWORD;
-  if (pgPass) {
-    const pgUser = process.env.POSTGRES_USER ?? "postgres";
-    const pgHost = process.env.POSTGRES_HOST ?? "localhost";
-    const pgPort = process.env.POSTGRES_PORT ?? "5432";
-    const pgDb = process.env.POSTGRES_DB ?? "sabr";
-    // encode credentials to be safe with special chars
-    process.env.DATABASE_URL = `postgres://${encodeURIComponent(pgUser)}:${encodeURIComponent(pgPass)}@${pgHost}:${pgPort}/${pgDb}`;
-    console.info("ℹ️ Constructed DATABASE_URL from POSTGRES_* environment variables");
-  }
+// ── Auto-construct DATABASE_URL if missing ──
+// Use individual POSTGRES_ vars to build a safe, URL-encoded connection string.
+// This handles passwords with special characters that break simple string interpolation.
+if (!process.env.DATABASE_URL && process.env.POSTGRES_PASSWORD) {
+  const user = encodeURIComponent(process.env.POSTGRES_USER || "postgres");
+  const pass = encodeURIComponent(process.env.POSTGRES_PASSWORD);
+  const host = process.env.POSTGRES_HOST || "postgres";
+  const port = process.env.POSTGRES_PORT || "5432";
+  const db = encodeURIComponent(process.env.POSTGRES_DB || "sabr");
+
+  process.env.DATABASE_URL = `postgres://${user}:${pass}@${host}:${port}/${db}`;
+  console.log(`🔧 Constructed DATABASE_URL from environment variables (host: ${host})`);
 }
 
 const envSchema = z.object({
