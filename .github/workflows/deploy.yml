@@ -27,14 +27,14 @@ jobs:
 
       - name: Build backend image
         run: |
-          docker build \
+          docker build --no-cache \
             --tag sabr-backend:latest \
             -f backend/Dockerfile \
             backend/
 
       - name: Build frontend image
         run: |
-          docker build \
+          docker build --no-cache \
             --build-arg API_URL=https://api.sabr.haskify.com \
             --tag sabr-frontend:latest \
             -f frontend/Dockerfile \
@@ -54,20 +54,23 @@ jobs:
 
       - name: Create .env file with full configuration
         env:
-          # Secrets
-          JWT_SECRET: ${{ secrets.JWT_SECRET || 'dev_secret_key_change_in_prod' }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'postgresW' }}
-          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD || 'minioadmin' }}
-          PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD || 'admin' }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD || 'securePass123!' }}
-          SEED_PASSWORD: ${{ secrets.SEED_PASSWORD || 'password123' }}
+          # Required Secrets (NO fallbacks — must be set in GitHub Secrets)
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          SEED_PASSWORD: ${{ secrets.SEED_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SMTP_EMAIL: ${{ secrets.SMTP_EMAIL }}
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
           
-          # Configurable values (Secrets with defaults)
+          # Configurable values (safe defaults)
           ACME_EMAIL: ${{ secrets.ACME_EMAIL || 'admin@sabr.haskify.com' }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'postgres' }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'sabr' }}
           MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER || 'admin' }}
           PGADMIN_DEFAULT_EMAIL: ${{ secrets.PGADMIN_DEFAULT_EMAIL || 'admin@sabr.haskify.com' }}
+          PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD || 'admin' }}
           
           # Fixed / defaults
           PORT: 3000
@@ -76,6 +79,7 @@ jobs:
           MINIO_PORT: 9002
           MINIO_BUCKET: sabr
           MINIO_USE_SSL: false
+          FRONTEND_URL: https://sabr.haskify.com
         run: |
           echo "📝 Writing complete .env file..."
           
@@ -90,11 +94,14 @@ jobs:
           ACME_EMAIL=$ACME_EMAIL
           
           # Database
+          POSTGRES_HOST=postgres
+          POSTGRES_PORT=5432
           POSTGRES_USER=$POSTGRES_USER
           POSTGRES_PASSWORD=$POSTGRES_PASSWORD
           POSTGRES_DB=$POSTGRES_DB
-          # Note: Internal container URL is set in docker-compose, this is for reference
-          DATABASE_URL=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5434/$POSTGRES_DB
+          # Note: DATABASE_URL is constructed automatically by backend/src/config/env.ts using these vars
+          # to ensure proper URL encoding of special characters in passwords.
+
           
           # MinIO
           MINIO_ENDPOINT=$MINIO_ENDPOINT
@@ -114,6 +121,14 @@ jobs:
           RUNNER_TIMEOUT_MINUTES=30
           VIEWER_TIMEOUT_MINUTES=30
           MAX_UPLOAD_SIZE_MB=50
+          
+          # AI (LangChain / OpenAI)
+          OPENAI_API_KEY=$OPENAI_API_KEY
+          
+          # Email (Password Reset)
+          SMTP_EMAIL=$SMTP_EMAIL
+          SMTP_APP_PASSWORD=$SMTP_APP_PASSWORD
+          FRONTEND_URL=$FRONTEND_URL
           
           # Seeding
           ADMIN_PASSWORD=$ADMIN_PASSWORD

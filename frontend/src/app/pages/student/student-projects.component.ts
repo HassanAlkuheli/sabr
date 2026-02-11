@@ -11,6 +11,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
 import { LogsDialogComponent } from '../../shared/components/logs-dialog.component';
+import { AiScanDialogComponent } from '../../shared/components/ai-scan-dialog.component';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { I18nService } from '../../core/services/i18n.service';
 import { StudentStateService } from './student-state.service';
@@ -32,6 +33,7 @@ import { Project } from '../../core/models/project.model';
     ConfirmDialogModule,
     StatusBadgeComponent,
     LogsDialogComponent,
+    AiScanDialogComponent,
     TranslatePipe,
   ],
   providers: [ConfirmationService],
@@ -45,15 +47,35 @@ import { Project } from '../../core/models/project.model';
           <summary class="cursor-pointer text-sm font-medium text-blue-700 dark:text-blue-300 p-3 select-none flex items-center gap-2">
             <i class="pi pi-info-circle"></i> {{ 'upload.hint.toggle' | translate }}
           </summary>
-          <ul class="px-4 pb-3 space-y-1.5 text-xs text-blue-600 dark:text-blue-400 ltr:ml-5 rtl:mr-5 list-disc">
-            <li>{{ 'upload.hint.1' | translate }}</li>
-            <li>{{ 'upload.hint.2' | translate }}</li>
-            <li>{{ 'upload.hint.3' | translate }}</li>
-            <li>{{ 'upload.hint.4' | translate }}</li>
-            <li>{{ 'upload.hint.5' | translate }}</li>
-            <li>{{ 'upload.hint.6' | translate }}</li>
-            <li>{{ 'upload.hint.7' | translate }}</li>
-          </ul>
+          <div class="px-4 pb-3 space-y-3 text-xs text-blue-600 dark:text-blue-400">
+            <div>
+              <p class="font-semibold text-blue-700 dark:text-blue-300 mb-1">{{ 'upload.hint.static.title' | translate }}</p>
+              <ul class="ltr:ml-5 rtl:mr-5 list-disc space-y-0.5">
+                <li>{{ 'upload.hint.static.1' | translate }}</li>
+                <li>{{ 'upload.hint.static.2' | translate }}</li>
+                <li>{{ 'upload.hint.static.3' | translate }}</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-semibold text-blue-700 dark:text-blue-300 mb-1">{{ 'upload.hint.node.title' | translate }}</p>
+              <ul class="ltr:ml-5 rtl:mr-5 list-disc space-y-0.5">
+                <li>{{ 'upload.hint.node.1' | translate }}</li>
+                <li>{{ 'upload.hint.node.2' | translate }}</li>
+                <li>{{ 'upload.hint.node.3' | translate }}</li>
+                <li>{{ 'upload.hint.node.4' | translate }}</li>
+                <li>{{ 'upload.hint.node.5' | translate }}</li>
+                <li>{{ 'upload.hint.node.6' | translate }}</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-semibold text-blue-700 dark:text-blue-300 mb-1">{{ 'upload.hint.general.title' | translate }}</p>
+              <ul class="ltr:ml-5 rtl:mr-5 list-disc space-y-0.5">
+                <li>{{ 'upload.hint.general.1' | translate }}</li>
+                <li>{{ 'upload.hint.general.2' | translate }}</li>
+                <li>{{ 'upload.hint.general.3' | translate }}</li>
+              </ul>
+            </div>
+          </div>
         </details>
 
         @if (uploadError()) {
@@ -261,6 +283,17 @@ import { Project } from '../../core/models/project.model';
                   [disabled]="project.status === 'STOPPED'"
                   (onClick)="state.openLogs(project)"
                 />
+                @if (project.labId) {
+                  <p-button
+                    icon="pi pi-sparkles"
+                    severity="help"
+                    [text]="true"
+                    [rounded]="true"
+                    [pTooltip]="'ai.scan' | translate"
+                    tooltipPosition="left"
+                    (onClick)="openAiScan(project)"
+                  />
+                }
                 <p-button
                   icon="pi pi-trash"
                   severity="danger"
@@ -296,6 +329,13 @@ import { Project } from '../../core/models/project.model';
       (closed)="state.closeLogs()"
       (refreshRequested)="state.refreshLogs()"
     />
+
+    <!-- AI Scan Dialog -->
+    <app-ai-scan-dialog
+      [visible]="showAiScan()"
+      [projectId]="aiScanProjectId()"
+      (closed)="closeAiScan()"
+    />
   `,
 })
 export class StudentProjectsComponent {
@@ -307,6 +347,10 @@ export class StudentProjectsComponent {
   uploading = signal(false);
   uploadError = signal<string | null>(null);
   uploadSuccess = signal(false);
+
+  // AI scan
+  showAiScan = signal(false);
+  aiScanProjectId = signal('');
 
   projectName = '';
   selectedFile: File | null = null;
@@ -377,5 +421,16 @@ export class StudentProjectsComponent {
       rejectLabel: this.i18n.t('common.no'),
       accept: () => this.state.deleteProject(project),
     });
+  }
+
+  // ─── AI Scan ──────────────────────────────
+
+  openAiScan(project: Project) {
+    this.aiScanProjectId.set(project.id);
+    this.showAiScan.set(true);
+  }
+
+  closeAiScan() {
+    this.showAiScan.set(false);
   }
 }

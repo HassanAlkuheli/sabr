@@ -84,14 +84,19 @@ services:
 
   # ── Backend (Bun + Elysia) ─────────────────
   backend:
-    build: ./backend
+    image: sabr-backend:latest
     container_name: sabr-backend
     environment:
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       DEPLOY_DOMAIN: ${DEPLOY_DOMAIN:-sabr.haskify.com}
       CORS_ORIGIN: https://${DEPLOY_DOMAIN:-sabr.haskify.com}
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # DATABASE_URL is constructed in app (env.ts) to handle password encoding safely
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-sabr}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
@@ -120,10 +125,7 @@ services:
 
   # ── Frontend (Angular + nginx) ──────────────
   frontend:
-    build:
-      context: ./frontend
-      args:
-        API_URL: https://api.${DEPLOY_DOMAIN:-sabr.haskify.com}
+    image: sabr-frontend:latest
     container_name: sabr-frontend
     depends_on:
       - backend

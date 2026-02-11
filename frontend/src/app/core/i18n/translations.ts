@@ -104,13 +104,22 @@ export const EN: Translations = {
 
   // ─── Upload Hints ─────────────────────────
   'upload.hint.toggle': 'Tips for successful hosting',
-  'upload.hint.1': 'Add a "start" script in package.json (e.g. "start": "node server.js")',
-  'upload.hint.2': 'Use process.env.PORT for the server port (e.g. app.listen(process.env.PORT || 5000))',
-  'upload.hint.3': 'Use environment variables for DB: DB_HOST, DB_USER, DB_PASSWORD, DB_NAME',
-  'upload.hint.4': 'Place your SQL schema file as db.sql at the project root',
-  'upload.hint.5': 'Do NOT include CREATE DATABASE or USE statements in db.sql',
-  'upload.hint.6': 'Ensure all dependencies are listed in package.json',
-  'upload.hint.7': 'Supported archives: .zip and .rar',
+  'upload.hint.static.title': 'Static Sites (HTML/CSS/JS only)',
+  'upload.hint.static.1': 'Include an index.html at the root — it is the entry point for your site',
+  'upload.hint.static.2': 'If you have multiple HTML files (e.g. home.html), we auto-redirect to the most likely entry page',
+  'upload.hint.static.3': 'Use relative paths for links, images, and CSS files',
+  'upload.hint.node.title': 'Node.js Projects (Express, etc.)',
+  'upload.hint.node.1': 'Add a "start" script in package.json (e.g. "start": "node server.js")',
+  'upload.hint.node.2': 'Use process.env.PORT for the server port — we set it automatically',
+  'upload.hint.node.3': 'Use environment variables for DB: process.env.DB_HOST, DB_USER, DB_PASSWORD, DB_PORT, DB_NAME',
+  'upload.hint.node.4': 'Place your SQL schema as db.sql at the project root — do NOT include CREATE DATABASE or USE',
+  'upload.hint.node.5': 'Ensure all dependencies are listed in package.json (we run npm/bun install for you)',
+  'upload.hint.node.6': 'If you include a Dockerfile, we will use it — make sure it EXPOSEs the correct port',
+  'upload.hint.general.title': 'General',
+  'upload.hint.general.1': 'Supported archives: .zip and .rar — max 50 MB',
+  'upload.hint.general.2': 'Wrap your project in a single folder inside the archive (e.g. myProject/index.html)',
+  'upload.hint.general.3': 'After uploading, click Deploy to launch your project and get a live URL',
+  'upload.hint.professor': 'Share these tips with your students to help them upload projects that work out of the box',
 
   // ─── Admin Dashboard ──────────────────────
   'admin.title': 'Admin Panel',
@@ -241,7 +250,25 @@ export const EN: Translations = {
   'lang.label': 'EN',
   'lang.english': 'English',
   'lang.arabic': 'العربية',
-};
+  // ─── AI Scan ──────────────────────────
+  'ai.scanTitle': 'AI Project Analysis',
+  'ai.scan': 'AI Scan',
+  'ai.scanning': 'Analyzing project files with AI...',
+  'ai.retry': 'Retry',
+  'ai.matchLabel': 'Lab Requirement Match',
+  'ai.strengths': 'Strengths',
+  'ai.improvements': 'Needs Improvement',
+  'ai.missing': 'Missing Requirements',
+
+  // ─── Password Reset ─────────────────
+  'auth.forgotPassword': 'Forgot password?',
+  'auth.resetPassword': 'Reset Password',
+  'auth.resetEmailSent': 'If an account exists with this email, a reset link has been sent.',
+  'auth.newPassword': 'New Password',
+  'auth.confirmNewPassword': 'Confirm New Password',
+  'auth.passwordReset': 'Password has been reset successfully! Please sign in.',
+  'auth.resetLink': 'Send Reset Link',
+  'auth.backToLogin': 'Back to Sign In',};
 
 export const AR: Translations = {
   // ─── App ────────────────────────────────────
@@ -345,13 +372,22 @@ export const AR: Translations = {
 
   // ─── Upload Hints ─────────────────────────
   'upload.hint.toggle': 'نصائح لاستضافة ناجحة',
-  'upload.hint.1': 'أضف سكربت "start" في package.json (مثال: "start": "node server.js")',
-  'upload.hint.2': 'استخدم process.env.PORT لمنفذ السيرفر (مثال: app.listen(process.env.PORT || 5000))',
-  'upload.hint.3': 'استخدم متغيرات البيئة لقاعدة البيانات: DB_HOST, DB_USER, DB_PASSWORD, DB_NAME',
-  'upload.hint.4': 'ضع ملف SQL الخاص بك باسم db.sql في جذر المشروع',
-  'upload.hint.5': 'لا تضع عبارات CREATE DATABASE أو USE في ملف db.sql',
-  'upload.hint.6': 'تأكد من أن جميع المكتبات مذكورة في package.json',
-  'upload.hint.7': 'الملفات المدعومة: zip. و rar.',
+  'upload.hint.static.title': 'المواقع الثابتة (HTML/CSS/JS فقط)',
+  'upload.hint.static.1': 'أضف ملف index.html في الجذر — هو نقطة الدخول لموقعك',
+  'upload.hint.static.2': 'إذا كان لديك عدة ملفات HTML (مثل home.html)، سنوجّه تلقائياً لأنسب صفحة',
+  'upload.hint.static.3': 'استخدم مسارات نسبية للروابط والصور وملفات CSS',
+  'upload.hint.node.title': 'مشاريع Node.js (Express، إلخ)',
+  'upload.hint.node.1': 'أضف سكربت "start" في package.json (مثال: "start": "node server.js")',
+  'upload.hint.node.2': 'استخدم process.env.PORT لمنفذ السيرفر — نضبطه تلقائياً',
+  'upload.hint.node.3': 'استخدم متغيرات البيئة لقاعدة البيانات: process.env.DB_HOST, DB_USER, DB_PASSWORD, DB_PORT, DB_NAME',
+  'upload.hint.node.4': 'ضع ملف SQL باسم db.sql في جذر المشروع — لا تضع CREATE DATABASE أو USE',
+  'upload.hint.node.5': 'تأكد أن جميع المكتبات مذكورة في package.json (نقوم بتثبيتها تلقائياً)',
+  'upload.hint.node.6': 'إذا أضفت Dockerfile خاص بك، سنستخدمه — تأكد أنه يعرض EXPOSE المنفذ الصحيح',
+  'upload.hint.general.title': 'عام',
+  'upload.hint.general.1': 'الملفات المدعومة: zip. و rar. — الحد الأقصى 50 ميجابايت',
+  'upload.hint.general.2': 'ضع مشروعك في مجلد واحد داخل الأرشيف (مثال: myProject/index.html)',
+  'upload.hint.general.3': 'بعد الرفع، اضغط نشر لتشغيل مشروعك والحصول على رابط مباشر',
+  'upload.hint.professor': 'شارك هذه النصائح مع طلابك لمساعدتهم في رفع مشاريع تعمل مباشرة',
 
   // ─── Admin Dashboard ──────────────────────
   'admin.title': 'لوحة الإدارة',
@@ -482,4 +518,22 @@ export const AR: Translations = {
   'lang.label': 'ع',
   'lang.english': 'English',
   'lang.arabic': 'العربية',
-};
+  // ─── AI Scan ──────────────────────────
+  'ai.scanTitle': 'تحليل المشروع بالذكاء الاصطناعي',
+  'ai.scan': 'فحص ذكي',
+  'ai.scanning': 'جاري تحليل ملفات المشروع بالذكاء الاصطناعي...',
+  'ai.retry': 'إعادة المحاولة',
+  'ai.matchLabel': 'نسبة التطابق مع متطلبات المختبر',
+  'ai.strengths': 'نقاط القوة',
+  'ai.improvements': 'يحتاج تحسين',
+  'ai.missing': 'متطلبات مفقودة',
+
+  // ─── Password Reset ─────────────────
+  'auth.forgotPassword': 'نسيت كلمة المرور؟',
+  'auth.resetPassword': 'إعادة تعيين كلمة المرور',
+  'auth.resetEmailSent': 'إذا كان هناك حساب بهذا البريد، تم إرسال رابط إعادة التعيين.',
+  'auth.newPassword': 'كلمة مرور جديدة',
+  'auth.confirmNewPassword': 'تأكيد كلمة المرور الجديدة',
+  'auth.passwordReset': 'تم إعادة تعيين كلمة المرور بنجاح! الرجاء تسجيل الدخول.',
+  'auth.resetLink': 'إرسال رابط إعادة التعيين',
+  'auth.backToLogin': 'العودة لتسجيل الدخول',};

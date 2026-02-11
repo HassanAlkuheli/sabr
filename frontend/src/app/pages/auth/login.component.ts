@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TabsModule } from 'primeng/tabs';
 import { InputTextModule } from 'primeng/inputtext';
@@ -14,7 +14,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, TabsModule, InputTextModule, PasswordModule, ButtonModule, MessageModule, TranslatePipe],
+  imports: [FormsModule, TabsModule, InputTextModule, PasswordModule, ButtonModule, MessageModule, RouterLink, TranslatePipe],
   styles: [`
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(24px); }
@@ -117,6 +117,12 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
                     styleClass="w-full"
                     [loading]="loading()"
                   />
+                </div>
+
+                <div class="text-center pt-1">
+                  <a routerLink="/forgot-password" class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline">
+                    {{ 'auth.forgotPassword' | translate }}
+                  </a>
                 </div>
               </form>
             </p-tabpanel>

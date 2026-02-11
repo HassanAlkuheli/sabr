@@ -19,21 +19,10 @@ if (await envFile.exists()) {
   }
 }
 
-// ── Auto-construct DATABASE_URL if missing or invalid ──
-// Use individual POSTGRES_ vars to build a safe, URL-encoded connection string.
-// This handles passwords with special characters that break simple string interpolation.
-const rawDatabaseUrl = process.env.DATABASE_URL;
-let hasValidDatabaseUrl = false;
-if (rawDatabaseUrl) {
-  try {
-    new URL(rawDatabaseUrl);
-    hasValidDatabaseUrl = true;
-  } catch {
-    hasValidDatabaseUrl = false;
-  }
-}
-
-if (!hasValidDatabaseUrl && process.env.POSTGRES_PASSWORD) {
+// ── Auto-construct DATABASE_URL from POSTGRES_* vars ──
+// Always prefer constructing from individual vars so passwords are safely URL-encoded.
+// This avoids issues with special chars (#, @, etc.) breaking the connection string.
+if (process.env.POSTGRES_PASSWORD) {
   const user = encodeURIComponent(process.env.POSTGRES_USER || "postgres");
   const pass = encodeURIComponent(process.env.POSTGRES_PASSWORD);
   const host = process.env.POSTGRES_HOST || "postgres";
@@ -41,7 +30,7 @@ if (!hasValidDatabaseUrl && process.env.POSTGRES_PASSWORD) {
   const db = encodeURIComponent(process.env.POSTGRES_DB || "sabr");
 
   process.env.DATABASE_URL = `postgresql://${user}:${pass}@${host}:${port}/${db}`;
-  console.log(`🔧 Constructed DATABASE_URL from environment variables (host: ${host})`);
+  console.log(`🔧 Constructed DATABASE_URL (host=${host}, port=${port}, db=${process.env.POSTGRES_DB || "sabr"})`);
 }
 
 const envSchema = z.object({
@@ -50,7 +39,8 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16),  CORS_ORIGIN: z.string().optional(),  DEPLOY_DOMAIN: z.string().default("sabr.localhost"),
 
   // ── Database ─────────────────────
-  DATABASE_URL: z.string().url(),
+  // Note: Do NOT use z.string().url() — Zod v4 rejects postgresql:// scheme
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 
   // ── MinIO ────────────────────────
   MINIO_ENDPOINT: z.string().default("localhost"),

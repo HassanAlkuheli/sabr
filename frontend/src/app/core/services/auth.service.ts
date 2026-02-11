@@ -90,4 +90,20 @@ export class AuthService {
         }),
       );
   }
+
+  /* ─── Password Reset ─── */
+
+  forgotPassword(email: string) {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.api}/forgot-password`,
+      { email },
+    );
+  }
+
+  resetPassword(token: string, password: string) {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.api}/reset-password`,
+      { token, password },
+    );
+  }
 }

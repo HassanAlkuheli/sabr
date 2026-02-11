@@ -8,6 +8,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { DialogModule } from 'primeng/dialog';
 import { MessageModule } from 'primeng/message';
 import { StatusBadgeComponent } from '../../shared/components/status-badge.component';
+import { AiScanDialogComponent } from '../../shared/components/ai-scan-dialog.component';
 import { ProfessorStateService } from './professor-state.service';
 import { ProfessorService } from '../../core/services/professor.service';
 import { AdminProject } from '../../core/models/project.model';
@@ -20,10 +21,47 @@ import { LogsDialogComponent } from '../../shared/components/logs-dialog.compone
   imports: [
     FormsModule, TableModule, ButtonModule, InputTextModule,
     SelectModule, TooltipModule, DialogModule, MessageModule,
-    StatusBadgeComponent, TranslatePipe, LogsDialogComponent,
+    StatusBadgeComponent, TranslatePipe, LogsDialogComponent, AiScanDialogComponent,
   ],
   template: `
     <div class="p-6 space-y-4">
+      <!-- Upload hints for sharing with students -->
+      <details class="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <summary class="cursor-pointer text-sm font-medium text-blue-700 dark:text-blue-300 p-3 select-none flex items-center gap-2">
+          <i class="pi pi-info-circle"></i> {{ 'upload.hint.toggle' | translate }}
+          <span class="text-xs font-normal opacity-70">({{ 'upload.hint.professor' | translate }})</span>
+        </summary>
+        <div class="px-4 pb-3 space-y-3 text-xs text-blue-600 dark:text-blue-400">
+          <div>
+            <p class="font-semibold text-blue-700 dark:text-blue-300 mb-1">{{ 'upload.hint.static.title' | translate }}</p>
+            <ul class="ltr:ml-5 rtl:mr-5 list-disc space-y-0.5">
+              <li>{{ 'upload.hint.static.1' | translate }}</li>
+              <li>{{ 'upload.hint.static.2' | translate }}</li>
+              <li>{{ 'upload.hint.static.3' | translate }}</li>
+            </ul>
+          </div>
+          <div>
+            <p class="font-semibold text-blue-700 dark:text-blue-300 mb-1">{{ 'upload.hint.node.title' | translate }}</p>
+            <ul class="ltr:ml-5 rtl:mr-5 list-disc space-y-0.5">
+              <li>{{ 'upload.hint.node.1' | translate }}</li>
+              <li>{{ 'upload.hint.node.2' | translate }}</li>
+              <li>{{ 'upload.hint.node.3' | translate }}</li>
+              <li>{{ 'upload.hint.node.4' | translate }}</li>
+              <li>{{ 'upload.hint.node.5' | translate }}</li>
+              <li>{{ 'upload.hint.node.6' | translate }}</li>
+            </ul>
+          </div>
+          <div>
+            <p class="font-semibold text-blue-700 dark:text-blue-300 mb-1">{{ 'upload.hint.general.title' | translate }}</p>
+            <ul class="ltr:ml-5 rtl:mr-5 list-disc space-y-0.5">
+              <li>{{ 'upload.hint.general.1' | translate }}</li>
+              <li>{{ 'upload.hint.general.2' | translate }}</li>
+              <li>{{ 'upload.hint.general.3' | translate }}</li>
+            </ul>
+          </div>
+        </div>
+      </details>
+
       <!-- Search / filters bar -->
       <div class="flex flex-wrap gap-3 items-center">
         <div class="flex-1 min-w-64">
@@ -109,6 +147,17 @@ import { LogsDialogComponent } from '../../shared/components/logs-dialog.compone
                   [disabled]="p.status === 'STOPPED'"
                   (onClick)="state.openLogs(p)"
                 />
+                @if (p.labId) {
+                  <p-button
+                    icon="pi pi-sparkles"
+                    severity="help"
+                    [text]="true"
+                    [rounded]="true"
+                    [pTooltip]="'ai.scan' | translate"
+                    tooltipPosition="left"
+                    (onClick)="openAiScan(p)"
+                  />
+                }
               </td>
             </tr>
           </ng-template>
@@ -150,6 +199,13 @@ import { LogsDialogComponent } from '../../shared/components/logs-dialog.compone
         </div>
       }
     </p-dialog>
+
+    <!-- AI Scan Dialog -->
+    <app-ai-scan-dialog
+      [visible]="showAiScan()"
+      [projectId]="aiScanProjectId()"
+      (closed)="closeAiScan()"
+    />
   `,
 })
 export class ProfessorProjectsComponent {
@@ -169,6 +225,10 @@ export class ProfessorProjectsComponent {
   gradeError = signal<string | null>(null);
   gradeSuccess = signal(false);
   savingGrade = signal(false);
+
+  // AI scan
+  showAiScan = signal(false);
+  aiScanProjectId = signal('');
 
   constructor() {
     effect(() => {
@@ -240,5 +300,16 @@ export class ProfessorProjectsComponent {
         this.savingGrade.set(false);
       },
     });
+  }
+
+  // ─── AI Scan ──────────────────────────────
+
+  openAiScan(p: AdminProject) {
+    this.aiScanProjectId.set(p.id);
+    this.showAiScan.set(true);
+  }
+
+  closeAiScan() {
+    this.showAiScan.set(false);
   }
 }
