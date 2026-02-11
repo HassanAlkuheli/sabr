@@ -97,6 +97,7 @@ export class AiScanDialogComponent {
   closed = output<void>();
 
   private aiService = inject(AiService);
+  private lastProjectId = '';
 
   loading = signal(false);
   error = signal<string | null>(null);
@@ -130,10 +131,19 @@ export class AiScanDialogComponent {
     });
   }
 
-  // Auto-start scan when dialog opens
+  // Auto-start scan when dialog opens; reset if project changed
   ngOnChanges() {
-    if (this.visible() && !this.result() && !this.loading()) {
-      this.scan();
+    const currentId = this.projectId();
+    if (this.visible()) {
+      // If the project changed, clear stale results so we always re-scan
+      if (currentId !== this.lastProjectId) {
+        this.lastProjectId = currentId;
+        this.result.set(null);
+        this.error.set(null);
+      }
+      if (!this.result() && !this.loading()) {
+        this.scan();
+      }
     }
   }
 }
