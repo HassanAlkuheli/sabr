@@ -17,6 +17,16 @@ if (existsSync(envPath)) {
   }
 }
 
+// Auto-construct DATABASE_URL from individual POSTGRES_* vars if missing
+if (!process.env.DATABASE_URL && process.env.POSTGRES_PASSWORD) {
+  const user = encodeURIComponent(process.env.POSTGRES_USER || 'postgres')
+  const pass = encodeURIComponent(process.env.POSTGRES_PASSWORD)
+  const host = process.env.POSTGRES_HOST || 'postgres'
+  const port = process.env.POSTGRES_PORT || '5432'
+  const db = encodeURIComponent(process.env.POSTGRES_DB || 'sabr')
+  process.env.DATABASE_URL = `postgresql://${user}:${pass}@${host}:${port}/${db}`
+}
+
 export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
