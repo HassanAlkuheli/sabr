@@ -19,10 +19,21 @@ if (await envFile.exists()) {
   }
 }
 
-// ── Auto-construct DATABASE_URL if missing ──
+// ── Auto-construct DATABASE_URL if missing or invalid ──
 // Use individual POSTGRES_ vars to build a safe, URL-encoded connection string.
 // This handles passwords with special characters that break simple string interpolation.
-if (!process.env.DATABASE_URL && process.env.POSTGRES_PASSWORD) {
+const rawDatabaseUrl = process.env.DATABASE_URL;
+let hasValidDatabaseUrl = false;
+if (rawDatabaseUrl) {
+  try {
+    new URL(rawDatabaseUrl);
+    hasValidDatabaseUrl = true;
+  } catch {
+    hasValidDatabaseUrl = false;
+  }
+}
+
+if (!hasValidDatabaseUrl && process.env.POSTGRES_PASSWORD) {
   const user = encodeURIComponent(process.env.POSTGRES_USER || "postgres");
   const pass = encodeURIComponent(process.env.POSTGRES_PASSWORD);
   const host = process.env.POSTGRES_HOST || "postgres";
