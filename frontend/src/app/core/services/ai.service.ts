@@ -11,12 +11,39 @@ export interface AiScanResult {
   missingRequirements: string[];
 }
 
+export interface DeepScanResult {
+  matchPercentage: number;
+  summary: string;
+  pageLoads: boolean;
+  consoleErrors: string[];
+  interactiveTests: { description: string; passed: boolean; details: string }[];
+  missingBehaviors: string[];
+}
+
+export interface CachedScanData {
+  result: AiScanResult | null;
+  scannedAt: string | null;
+  deepResult: DeepScanResult | null;
+  deepScannedAt: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AiService {
   private http = inject(HttpClient);
   private base = environment.apiUrl;
 
+  /** Get cached scan results from DB (no LLM call) */
+  getCachedScan(projectId: string): Observable<{ success: boolean; data: CachedScanData }> {
+    return this.http.get<any>(`${this.base}/ai/scan/${projectId}`);
+  }
+
+  /** Run or re-run the code scan (calls LLM, saves to DB) */
   scanProject(projectId: string): Observable<{ success: boolean; data: AiScanResult; message?: string }> {
     return this.http.post<any>(`${this.base}/ai/scan/${projectId}`, {});
+  }
+
+  /** Run deep scan — crawls deployed pages and evaluates behavior (calls LLM, saves to DB) */
+  deepScanProject(projectId: string): Observable<{ success: boolean; data: DeepScanResult; message?: string }> {
+    return this.http.post<any>(`${this.base}/ai/deep-scan/${projectId}`, {});
   }
 }

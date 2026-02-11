@@ -71,6 +71,13 @@
       "when": 1770820015857,
       "tag": "0009_add-password-reset-fields",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1770850884206,
+      "tag": "0010_add-ai-scan-columns",
+      "breakpoints": true
     }
   ]
 }

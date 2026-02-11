@@ -3,91 +3,228 @@ import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { MessageModule } from 'primeng/message';
-import { AiService, AiScanResult } from '../../core/services/ai.service';
+import { TabsModule } from 'primeng/tabs';
+import { TagModule } from 'primeng/tag';
+import { AiService, AiScanResult, DeepScanResult } from '../../core/services/ai.service';
 import { TranslatePipe } from '../pipes/translate.pipe';
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-ai-scan-dialog',
   standalone: true,
-  imports: [DialogModule, ButtonModule, ProgressBarModule, MessageModule, TranslatePipe],
+  imports: [DialogModule, ButtonModule, ProgressBarModule, MessageModule, TabsModule, TagModule, TranslatePipe, DatePipe],
   template: `
     <p-dialog
       [header]="'ai.scanTitle' | translate"
       [visible]="visible()"
       (visibleChange)="closed.emit()"
       [modal]="true"
-      [style]="{ width: '600px', maxHeight: '80vh' }"
+      [style]="{ width: '680px', maxHeight: '85vh' }"
       [contentStyle]="{ overflow: 'auto' }"
     >
-      @if (loading()) {
-        <div class="flex flex-col items-center gap-4 py-8">
-          <i class="pi pi-spin pi-cog text-4xl text-primary"></i>
-          <p class="text-sm text-secondary">{{ 'ai.scanning' | translate }}</p>
-          <p-progressBar mode="indeterminate" styleClass="w-full" />
-        </div>
-      } @else if (error()) {
-        <p-message severity="error" [text]="error()!" styleClass="w-full mb-4" />
-        <div class="flex justify-end">
-          <p-button [label]="'ai.retry' | translate" icon="pi pi-refresh" (onClick)="scan()" />
-        </div>
-      } @else if (result()) {
-        <div class="space-y-4">
-          <!-- Match percentage -->
-          <div class="text-center">
-            <div class="text-4xl font-bold" [class]="percentColor()">
-              {{ result()!.matchPercentage }}%
+      <p-tabs [value]="activeTab()" (valueChange)="activeTab.set(+($event ?? 0))">
+        <p-tablist>
+          <p-tab [value]="0">{{ 'ai.codeScan' | translate }}</p-tab>
+          <p-tab [value]="1">{{ 'ai.deepScan' | translate }}</p-tab>
+        </p-tablist>
+        <p-tabpanels>
+        <!-- ═══ TAB: Code Scan ═══ -->
+        <p-tabpanel [value]="0">
+          @if (loadingCode()) {
+            <div class="flex flex-col items-center gap-4 py-8">
+              <i class="pi pi-spin pi-cog text-4xl text-primary"></i>
+              <p class="text-sm text-secondary">{{ 'ai.scanning' | translate }}</p>
+              <p-progressBar mode="indeterminate" styleClass="w-full" />
             </div>
-            <p class="text-sm text-secondary mt-1">{{ 'ai.matchLabel' | translate }}</p>
-          </div>
-
-          <!-- Summary -->
-          <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
-            <p class="text-sm">{{ result()!.summary }}</p>
-          </div>
-
-          <!-- Strengths -->
-          @if (result()!.strengths.length) {
-            <div>
-              <h4 class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1">
-                <i class="pi pi-check-circle"></i> {{ 'ai.strengths' | translate }}
-              </h4>
-              <ul class="list-disc ltr:ml-5 rtl:mr-5 space-y-1 text-sm">
-                @for (s of result()!.strengths; track s) {
-                  <li>{{ s }}</li>
+          } @else if (errorCode()) {
+            <p-message severity="error" [text]="errorCode()!" styleClass="w-full mb-4" />
+            <div class="flex justify-end">
+              <p-button [label]="'ai.retry' | translate" icon="pi pi-refresh" (onClick)="runCodeScan()" />
+            </div>
+          } @else if (codeScanResult()) {
+            <div class="space-y-4">
+              <!-- Scanned at timestamp + Scan Again button -->
+              <div class="flex items-center justify-between">
+                @if (codeScanAt()) {
+                  <span class="text-xs text-secondary">
+                    {{ 'ai.scannedAt' | translate }}: {{ codeScanAt() | date:'short' }}
+                  </span>
                 }
-              </ul>
+                <p-button [label]="'ai.scanAgain' | translate" icon="pi pi-refresh" severity="secondary" [text]="true" size="small" (onClick)="runCodeScan()" />
+              </div>
+
+              <!-- Match percentage -->
+              <div class="text-center">
+                <div class="text-4xl font-bold" [class]="percentColor(codeScanResult()!.matchPercentage)">
+                  {{ codeScanResult()!.matchPercentage }}%
+                </div>
+                <p class="text-sm text-secondary mt-1">{{ 'ai.matchLabel' | translate }}</p>
+              </div>
+
+              <!-- Summary -->
+              <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
+                <p class="text-sm">{{ codeScanResult()!.summary }}</p>
+              </div>
+
+              <!-- Strengths -->
+              @if (codeScanResult()!.strengths.length) {
+                <div>
+                  <h4 class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1">
+                    <i class="pi pi-check-circle"></i> {{ 'ai.strengths' | translate }}
+                  </h4>
+                  <ul class="list-disc ltr:ml-5 rtl:mr-5 space-y-1 text-sm">
+                    @for (s of codeScanResult()!.strengths; track s) {
+                      <li>{{ s }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+
+              <!-- Improvements -->
+              @if (codeScanResult()!.improvements.length) {
+                <div>
+                  <h4 class="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1">
+                    <i class="pi pi-exclamation-circle"></i> {{ 'ai.improvements' | translate }}
+                  </h4>
+                  <ul class="list-disc ltr:ml-5 rtl:mr-5 space-y-1 text-sm">
+                    @for (imp of codeScanResult()!.improvements; track imp) {
+                      <li>{{ imp }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+
+              <!-- Missing requirements -->
+              @if (codeScanResult()!.missingRequirements.length) {
+                <div>
+                  <h4 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
+                    <i class="pi pi-times-circle"></i> {{ 'ai.missing' | translate }}
+                  </h4>
+                  <ul class="list-disc ltr:ml-5 rtl:mr-5 space-y-1 text-sm">
+                    @for (m of codeScanResult()!.missingRequirements; track m) {
+                      <li>{{ m }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+          } @else {
+            <!-- No scan yet -->
+            <div class="flex flex-col items-center gap-4 py-8">
+              <i class="pi pi-search text-4xl text-secondary"></i>
+              <p class="text-sm text-secondary">{{ 'ai.noScanYet' | translate }}</p>
+              <p-button [label]="'ai.runScan' | translate" icon="pi pi-play" (onClick)="runCodeScan()" />
             </div>
           }
+        </p-tabpanel>
 
-          <!-- Improvements -->
-          @if (result()!.improvements.length) {
-            <div>
-              <h4 class="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1">
-                <i class="pi pi-exclamation-circle"></i> {{ 'ai.improvements' | translate }}
-              </h4>
-              <ul class="list-disc ltr:ml-5 rtl:mr-5 space-y-1 text-sm">
-                @for (imp of result()!.improvements; track imp) {
-                  <li>{{ imp }}</li>
+        <!-- ═══ TAB: Deep Scan ═══ -->
+        <p-tabpanel [value]="1">
+          @if (loadingDeep()) {
+            <div class="flex flex-col items-center gap-4 py-8">
+              <i class="pi pi-spin pi-globe text-4xl text-primary"></i>
+              <p class="text-sm text-secondary">{{ 'ai.deepScanning' | translate }}</p>
+              <p-progressBar mode="indeterminate" styleClass="w-full" />
+            </div>
+          } @else if (errorDeep()) {
+            <p-message severity="error" [text]="errorDeep()!" styleClass="w-full mb-4" />
+            <div class="flex justify-end">
+              <p-button [label]="'ai.retry' | translate" icon="pi pi-refresh" (onClick)="runDeepScan()" />
+            </div>
+          } @else if (deepScanResult()) {
+            <div class="space-y-4">
+              <!-- Scanned at timestamp + Scan Again button -->
+              <div class="flex items-center justify-between">
+                @if (deepScanAt()) {
+                  <span class="text-xs text-secondary">
+                    {{ 'ai.scannedAt' | translate }}: {{ deepScanAt() | date:'short' }}
+                  </span>
                 }
-              </ul>
+                <p-button [label]="'ai.scanAgain' | translate" icon="pi pi-refresh" severity="secondary" [text]="true" size="small" (onClick)="runDeepScan()" />
+              </div>
+
+              <!-- Match percentage + page load badge -->
+              <div class="text-center">
+                <div class="text-4xl font-bold" [class]="percentColor(deepScanResult()!.matchPercentage)">
+                  {{ deepScanResult()!.matchPercentage }}%
+                </div>
+                <p class="text-sm text-secondary mt-1">{{ 'ai.behaviorMatch' | translate }}</p>
+                <div class="mt-2">
+                  <p-tag
+                    [value]="deepScanResult()!.pageLoads ? ('ai.pageLoadsOk' | translate) : ('ai.pageLoadsFail' | translate)"
+                    [severity]="deepScanResult()!.pageLoads ? 'success' : 'danger'"
+                    icon="{{ deepScanResult()!.pageLoads ? 'pi pi-check' : 'pi pi-times' }}"
+                  />
+                </div>
+              </div>
+
+              <!-- Summary -->
+              <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
+                <p class="text-sm">{{ deepScanResult()!.summary }}</p>
+              </div>
+
+              <!-- Interactive tests -->
+              @if (deepScanResult()!.interactiveTests.length) {
+                <div>
+                  <h4 class="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-1">
+                    <i class="pi pi-check-square"></i> {{ 'ai.interactiveTests' | translate }}
+                  </h4>
+                  <div class="space-y-2">
+                    @for (test of deepScanResult()!.interactiveTests; track test.description) {
+                      <div class="flex items-start gap-2 text-sm">
+                        <i [class]="test.passed ? 'pi pi-check text-emerald-500' : 'pi pi-times text-red-500'" class="mt-0.5"></i>
+                        <div>
+                          <span class="font-medium">{{ test.description }}</span>
+                          @if (test.details) {
+                            <p class="text-xs text-secondary mt-0.5">{{ test.details }}</p>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Console errors -->
+              @if (deepScanResult()!.consoleErrors.length) {
+                <div>
+                  <h4 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
+                    <i class="pi pi-exclamation-triangle"></i> {{ 'ai.consoleErrors' | translate }}
+                  </h4>
+                  <ul class="list-disc ltr:ml-5 rtl:mr-5 space-y-1 text-xs font-mono">
+                    @for (e of deepScanResult()!.consoleErrors; track e) {
+                      <li>{{ e }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+
+              <!-- Missing behaviors -->
+              @if (deepScanResult()!.missingBehaviors.length) {
+                <div>
+                  <h4 class="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1">
+                    <i class="pi pi-info-circle"></i> {{ 'ai.missingBehaviors' | translate }}
+                  </h4>
+                  <ul class="list-disc ltr:ml-5 rtl:mr-5 space-y-1 text-sm">
+                    @for (b of deepScanResult()!.missingBehaviors; track b) {
+                      <li>{{ b }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+          } @else {
+            <!-- No deep scan yet -->
+            <div class="flex flex-col items-center gap-4 py-8">
+              <i class="pi pi-globe text-4xl text-secondary"></i>
+              <p class="text-sm text-secondary">{{ 'ai.noDeepScanYet' | translate }}</p>
+              <p class="text-xs text-secondary">{{ 'ai.deepScanHint' | translate }}</p>
+              <p-button [label]="'ai.runDeepScan' | translate" icon="pi pi-play" severity="help" (onClick)="runDeepScan()" />
             </div>
           }
-
-          <!-- Missing requirements -->
-          @if (result()!.missingRequirements.length) {
-            <div>
-              <h4 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
-                <i class="pi pi-times-circle"></i> {{ 'ai.missing' | translate }}
-              </h4>
-              <ul class="list-disc ltr:ml-5 rtl:mr-5 space-y-1 text-sm">
-                @for (m of result()!.missingRequirements; track m) {
-                  <li>{{ m }}</li>
-                }
-              </ul>
-            </div>
-          }
-        </div>
-      }
+        </p-tabpanel>
+        </p-tabpanels>
+      </p-tabs>
     </p-dialog>
   `,
 })
@@ -99,50 +236,113 @@ export class AiScanDialogComponent {
   private aiService = inject(AiService);
   private lastProjectId = '';
 
-  loading = signal(false);
-  error = signal<string | null>(null);
-  result = signal<AiScanResult | null>(null);
+  activeTab = signal(0);
 
-  percentColor() {
-    const p = this.result()?.matchPercentage ?? 0;
+  // Code scan state
+  loadingCode = signal(false);
+  errorCode = signal<string | null>(null);
+  codeScanResult = signal<AiScanResult | null>(null);
+  codeScanAt = signal<string | null>(null);
+
+  // Deep scan state
+  loadingDeep = signal(false);
+  errorDeep = signal<string | null>(null);
+  deepScanResult = signal<DeepScanResult | null>(null);
+  deepScanAt = signal<string | null>(null);
+
+  // Loading cached results
+  loadingCached = signal(false);
+
+  percentColor(p: number) {
     if (p >= 80) return 'text-emerald-600 dark:text-emerald-400';
     if (p >= 50) return 'text-amber-600 dark:text-amber-400';
     return 'text-red-600 dark:text-red-400';
   }
 
-  scan() {
-    this.loading.set(true);
-    this.error.set(null);
-    this.result.set(null);
-
-    this.aiService.scanProject(this.projectId()).subscribe({
+  /** Load cached results from DB */
+  loadCached() {
+    this.loadingCached.set(true);
+    this.aiService.getCachedScan(this.projectId()).subscribe({
       next: (res) => {
-        this.loading.set(false);
-        if (res.success) {
-          this.result.set(res.data);
-        } else {
-          this.error.set(res.message ?? 'Scan failed');
+        this.loadingCached.set(false);
+        if (res.success && res.data) {
+          if (res.data.result) {
+            this.codeScanResult.set(res.data.result);
+            this.codeScanAt.set(res.data.scannedAt);
+          }
+          if (res.data.deepResult) {
+            this.deepScanResult.set(res.data.deepResult);
+            this.deepScanAt.set(res.data.deepScannedAt);
+          }
         }
       },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'AI scan failed. Please try again.');
+      error: () => {
+        this.loadingCached.set(false);
       },
     });
   }
 
-  // Auto-start scan when dialog opens; reset if project changed
+  /** Run code scan (LLM call) */
+  runCodeScan() {
+    this.loadingCode.set(true);
+    this.errorCode.set(null);
+
+    this.aiService.scanProject(this.projectId()).subscribe({
+      next: (res) => {
+        this.loadingCode.set(false);
+        if (res.success) {
+          this.codeScanResult.set(res.data);
+          this.codeScanAt.set(new Date().toISOString());
+        } else {
+          this.errorCode.set(res.message ?? 'Scan failed');
+        }
+      },
+      error: (err) => {
+        this.loadingCode.set(false);
+        this.errorCode.set(err?.error?.message ?? 'AI scan failed. Please try again.');
+      },
+    });
+  }
+
+  /** Run deep scan (crawl + LLM call) */
+  runDeepScan() {
+    this.loadingDeep.set(true);
+    this.errorDeep.set(null);
+
+    this.aiService.deepScanProject(this.projectId()).subscribe({
+      next: (res) => {
+        this.loadingDeep.set(false);
+        if (res.success) {
+          this.deepScanResult.set(res.data);
+          this.deepScanAt.set(new Date().toISOString());
+        } else {
+          this.errorDeep.set(res.message ?? 'Deep scan failed');
+        }
+      },
+      error: (err) => {
+        this.loadingDeep.set(false);
+        this.errorDeep.set(err?.error?.message ?? 'Deep scan failed. Is the project running?');
+      },
+    });
+  }
+
+  // When dialog opens, load cached results; reset if project changed
   ngOnChanges() {
     const currentId = this.projectId();
     if (this.visible()) {
-      // If the project changed, clear stale results so we always re-scan
       if (currentId !== this.lastProjectId) {
         this.lastProjectId = currentId;
-        this.result.set(null);
-        this.error.set(null);
+        this.codeScanResult.set(null);
+        this.codeScanAt.set(null);
+        this.deepScanResult.set(null);
+        this.deepScanAt.set(null);
+        this.errorCode.set(null);
+        this.errorDeep.set(null);
+        this.activeTab.set(0);
       }
-      if (!this.result() && !this.loading()) {
-        this.scan();
+      // Load cached results from DB
+      if (!this.codeScanResult() && !this.loadingCode() && !this.loadingCached()) {
+        this.loadCached();
       }
     }
   }

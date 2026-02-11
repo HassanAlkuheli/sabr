@@ -5,11 +5,37 @@ import { AiService } from "./ai.service";
 
 export const aiController = new Elysia({ prefix: "/ai" })
 
-  // ── Student: scan own project ──
   .use(authGuard)
+
+  // ── GET cached scan results (no LLM call) ──
+  .get(
+    "/scan/:projectId",
+    async ({ params, set }) => {
+      try {
+        const cached = await AiService.getCachedScan(params.projectId);
+        return { success: true, data: cached };
+      } catch (err) {
+        const { message, statusCode } = sanitizeError(err);
+        set.status = statusCode;
+        return { success: false, message };
+      }
+    },
+    {
+      params: t.Object({
+        projectId: t.String({ format: "uuid" }),
+      }),
+      detail: {
+        summary: "Get cached AI scan results",
+        description: "Returns previously saved AI code-scan and deep-scan results without calling the LLM.",
+        tags: ["AI"],
+      },
+    },
+  )
+
+  // ── POST run (or re-run) code scan ──
   .post(
     "/scan/:projectId",
-    async ({ params, userId, userRole, set }) => {
+    async ({ params, set }) => {
       try {
         const result = await AiService.scanProject(params.projectId);
         return { success: true, data: result };
@@ -21,14 +47,40 @@ export const aiController = new Elysia({ prefix: "/ai" })
     },
     {
       params: t.Object({
-        projectId: t.String({ format: "uuid", description: "Project UUID" }),
+        projectId: t.String({ format: "uuid" }),
       }),
       detail: {
         summary: "AI Scan Project",
         description:
-          "Use AI to analyze a project's files against its lab requirements. " +
-          "Returns a match percentage, strengths, improvements, and missing requirements. " +
-          "Available to the project owner, professors, and admins.",
+          "Run AI analysis on a project's files against its lab requirements. " +
+          "Result is persisted to DB and returned.",
+        tags: ["AI"],
+      },
+    },
+  )
+
+  // ── POST deep scan (browser-based behavioral test) ──
+  .post(
+    "/deep-scan/:projectId",
+    async ({ params, set }) => {
+      try {
+        const result = await AiService.deepScanProject(params.projectId);
+        return { success: true, data: result };
+      } catch (err) {
+        const { message, statusCode } = sanitizeError(err);
+        set.status = statusCode;
+        return { success: false, message };
+      }
+    },
+    {
+      params: t.Object({
+        projectId: t.String({ format: "uuid" }),
+      }),
+      detail: {
+        summary: "Deep Scan Project",
+        description:
+          "Crawl the deployed project pages and use AI to evaluate behavior " +
+          "against lab requirements. Project must be running.",
         tags: ["AI"],
       },
     },

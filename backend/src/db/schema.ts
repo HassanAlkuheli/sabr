@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, pgEnum, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, pgEnum, integer, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { relations } from "drizzle-orm";
 
@@ -80,6 +80,14 @@ export const projects = pgTable("projects", {
   gradeMessage: text("grade_message"),
   /** Error message when deployment fails (helps students debug) */
   errorMessage: text("error_message"),
+  /** AI code scan result (persisted JSON) */
+  aiScanResult: jsonb("ai_scan_result"),
+  /** When the AI code scan was last run */
+  aiScanAt: timestamp("ai_scan_at", { withTimezone: true }),
+  /** AI deep scan result — browser-based behavioral test (persisted JSON) */
+  deepScanResult: jsonb("deep_scan_result"),
+  /** When the deep scan was last run */
+  deepScanAt: timestamp("deep_scan_at", { withTimezone: true }),
   lastActive: timestamp("last_active", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
