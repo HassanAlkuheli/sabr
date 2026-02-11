@@ -20,8 +20,12 @@ import { resolve, dirname } from "path";
 import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 
-// Hardcoded default for production ease (as requested)
-const SEED_PASSWORD = process.env.SEED_PASSWORD || "password123";
+// Require SEED_PASSWORD from environment (no hardcoded fallback)
+const SEED_PASSWORD = process.env.SEED_PASSWORD;
+if (!SEED_PASSWORD) {
+  console.error("❌ SEED_PASSWORD environment variable is required");
+  process.exit(1);
+}
 
 const BUCKET = env.MINIO_BUCKET;
 

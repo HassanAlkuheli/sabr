@@ -42,6 +42,14 @@ const envSchema = z.object({
   RUNNER_TIMEOUT_MINUTES: z.coerce.number().default(30),
   VIEWER_TIMEOUT_MINUTES: z.coerce.number().default(30),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().default(50),
+
+  // ── Email (Password Reset) ──────
+  SMTP_EMAIL: z.string().optional(),
+  SMTP_APP_PASSWORD: z.string().optional(),
+  FRONTEND_URL: z.string().default("https://sabr.haskify.com"),
+
+  // ── AI (LangChain / OpenAI) ────
+  OPENAI_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

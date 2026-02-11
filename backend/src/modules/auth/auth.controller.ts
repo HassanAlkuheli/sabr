@@ -98,6 +98,58 @@ export const authController = new Elysia({ prefix: "/auth" })
     },
   )
 
+  // ──────── Forgot Password ────────
+  .post(
+    "/forgot-password",
+    async ({ body, set }) => {
+      try {
+        await AuthService.forgotPassword(body.email);
+        // Always return success to prevent email enumeration
+        return { success: true, message: "If an account exists with this email, a reset link has been sent." };
+      } catch (err) {
+        const { message, statusCode } = sanitizeError(err);
+        set.status = statusCode;
+        return { success: false, message };
+      }
+    },
+    {
+      body: t.Object({
+        email: t.String({ format: "email", description: "Email address to send reset link to" }),
+      }),
+      detail: {
+        summary: "Forgot Password",
+        description: "Send a password reset link to the given email address. Always returns success to prevent email enumeration.",
+        tags: ["Auth"],
+      },
+    },
+  )
+
+  // ──────── Reset Password ────────
+  .post(
+    "/reset-password",
+    async ({ body, set }) => {
+      try {
+        await AuthService.resetPassword(body.token, body.password);
+        return { success: true, message: "Password has been reset successfully." };
+      } catch (err) {
+        const { message, statusCode } = sanitizeError(err);
+        set.status = statusCode;
+        return { success: false, message };
+      }
+    },
+    {
+      body: t.Object({
+        token: t.String({ minLength: 1, description: "Password reset token from email" }),
+        password: t.String({ minLength: 6, description: "New password (min 6 characters)" }),
+      }),
+      detail: {
+        summary: "Reset Password",
+        description: "Reset password using the token sent via email. Token expires after 1 hour.",
+        tags: ["Auth"],
+      },
+    },
+  )
+
   // ──────── Update Own Profile (authenticated) ────────
   .use(authGuard)
   .patch(

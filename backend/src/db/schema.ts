@@ -25,6 +25,10 @@ export const users = pgTable("users", {
    * Managed by an admin. e.g. ["M102","M103"]
    */
   sections: text("sections"),
+  /** Token for password reset (hashed) */
+  resetToken: text("reset_token"),
+  /** Expiry timestamp for the reset token */
+  resetTokenExpiry: timestamp("reset_token_expiry", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

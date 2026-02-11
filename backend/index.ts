@@ -11,6 +11,7 @@ import { projectsController } from "./src/modules/projects/projects.controller";
 import { runnerController } from "./src/modules/runner/runner.controller";
 import { viewerController } from "./src/modules/viewer/viewer.controller";
 import { professorController } from "./src/modules/professor/professor.controller";
+import { aiController } from "./src/modules/ai/ai.controller";
 import { RunnerService } from "./src/modules/runner/runner.service";
 import { ViewerService } from "./src/modules/viewer/viewer.service";
 
@@ -67,6 +68,7 @@ const app = new Elysia()
   .use(runnerController)
   .use(viewerController)
   .use(professorController)
+  .use(aiController)
   .get("/", () => ({ status: "ok", name: "Sabr API" }), {
     detail: {
       summary: "Health Check",

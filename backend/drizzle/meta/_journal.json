@@ -64,6 +64,13 @@
       "when": 1770747725366,
       "tag": "0008_luxuriant_wild_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1770820015857,
+      "tag": "0009_add-password-reset-fields",
+      "breakpoints": true
     }
   ]
 }
