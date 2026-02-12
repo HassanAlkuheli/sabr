@@ -18,9 +18,8 @@ export interface DeepScanResult {
   consoleErrors: string[];
   interactiveTests: { description: string; passed: boolean; details: string }[];
   missingBehaviors: string[];
-  screenshots?: string[];   // presigned MinIO URLs
+  screenshotPaths?: string[];   // MinIO paths
   pagesVisited?: string[];  // URLs visited
-  predictedGrade?: number | null;
 }
 
 export interface CachedScanData {
@@ -49,5 +48,10 @@ export class AiService {
   /** Run deep scan — crawls deployed pages and evaluates behavior (calls LLM, saves to DB) */
   deepScanProject(projectId: string): Observable<{ success: boolean; data: DeepScanResult; message?: string }> {
     return this.http.post<any>(`${this.base}/ai/deep-scan/${projectId}`, {});
+  }
+
+  /** Get presigned URL for a deep scan screenshot */
+  getScreenshotUrl(projectId: string, index: number): Observable<{ success: boolean; data: { url: string } }> {
+    return this.http.get<any>(`${this.base}/ai/screenshot/${projectId}/${index}`);
   }
 }

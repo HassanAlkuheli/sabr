@@ -22,25 +22,22 @@ import { DatePipe } from '@angular/common';
       [style]="{ width: '680px', maxHeight: '85vh' }"
       [contentStyle]="{ overflow: 'auto' }"
     >
+      <!-- Predicted Grade Banner -->
+      @if (predictedGrade() !== null) {
+        <div class="flex items-center justify-between bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 mb-4">
+          <div class="flex items-center gap-2">
+            <i class="pi pi-star-fill text-blue-500"></i>
+            <span class="text-sm font-semibold">{{ 'ai.predictedGrade' | translate }}</span>
+          </div>
+          <span class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ predictedGrade() }}</span>
+        </div>
+      }
+
       <p-tabs [value]="activeTab()" (valueChange)="activeTab.set(+($event ?? 0))">
         <p-tablist>
           <p-tab [value]="0">{{ 'ai.codeScan' | translate }}</p-tab>
           <p-tab [value]="1">{{ 'ai.deepScan' | translate }}</p-tab>
         </p-tablist>
-
-        <!-- ═══ Predicted Grade Banner ═══ -->
-        @if (predictedGrade() !== null) {
-          <div class="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/30 rounded-lg px-4 py-3 my-3 border border-indigo-200 dark:border-indigo-700">
-            <div>
-              <span class="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{{ 'ai.predictedGrade' | translate }}</span>
-              <p class="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">{{ 'ai.predictedGradeHint' | translate }}</p>
-            </div>
-            <div class="text-3xl font-bold" [class]="percentColor((predictedGrade()! / maxGrade()) * 100)">
-              {{ predictedGrade() }}<span class="text-lg text-secondary">/{{ maxGrade() }}</span>
-            </div>
-          </div>
-        }
-
         <p-tabpanels>
         <!-- ═══ TAB: Code Scan ═══ -->
         <p-tabpanel [value]="0">
@@ -242,17 +239,17 @@ import { DatePipe } from '@angular/common';
                 </div>
               }
 
-              <!-- Screenshots -->
-              @if (deepScanResult()!.screenshots?.length) {
+              <!-- Screenshots from MinIO -->
+              @if (screenshotUrls().length) {
                 <div>
                   <h4 class="text-sm font-semibold text-cyan-600 dark:text-cyan-400 mb-2 flex items-center gap-1">
                     <i class="pi pi-image"></i> {{ 'ai.screenshots' | translate }}
                   </h4>
                   <div class="grid grid-cols-2 gap-2">
-                    @for (ss of deepScanResult()!.screenshots!; track $index) {
-                      <img [src]="ss"
+                    @for (url of screenshotUrls(); track $index) {
+                      <img [src]="url"
                            class="rounded border border-slate-200 dark:border-slate-600 cursor-pointer hover:opacity-80 transition-opacity"
-                           (click)="openScreenshot(ss)"
+                           (click)="openScreenshotUrl(url)"
                            alt="Screenshot {{ $index + 1 }}" />
                     }
                   </div>
@@ -277,7 +274,6 @@ import { DatePipe } from '@angular/common';
 export class AiScanDialogComponent {
   visible = input.required<boolean>();
   projectId = input.required<string>();
-  maxGrade = input<number>(100);
   closed = output<void>();
 
   private aiService = inject(AiService);
@@ -299,6 +295,9 @@ export class AiScanDialogComponent {
 
   // Predicted grade
   predictedGrade = signal<number | null>(null);
+
+  // Screenshot URLs from MinIO
+  screenshotUrls = signal<string[]>([]);
 
   // Loading cached results
   loadingCached = signal(false);
@@ -323,10 +322,9 @@ export class AiScanDialogComponent {
           if (res.data.deepResult) {
             this.deepScanResult.set(res.data.deepResult);
             this.deepScanAt.set(res.data.deepScannedAt);
+            this.loadScreenshotUrls(res.data.deepResult);
           }
-          if (res.data.predictedGrade != null) {
-            this.predictedGrade.set(res.data.predictedGrade);
-          }
+          this.predictedGrade.set(res.data.predictedGrade ?? null);
         }
       },
       error: () => {
@@ -346,6 +344,10 @@ export class AiScanDialogComponent {
         if (res.success) {
           this.codeScanResult.set(res.data);
           this.codeScanAt.set(new Date().toISOString());
+          // Reload to get updated predicted grade
+          this.aiService.getCachedScan(this.projectId()).subscribe({
+            next: (r) => { if (r.success) this.predictedGrade.set(r.data.predictedGrade ?? null); },
+          });
         } else {
           this.errorCode.set(res.message ?? 'Scan failed');
         }
@@ -368,9 +370,11 @@ export class AiScanDialogComponent {
         if (res.success) {
           this.deepScanResult.set(res.data);
           this.deepScanAt.set(new Date().toISOString());
-          if ((res.data as any).predictedGrade != null) {
-            this.predictedGrade.set((res.data as any).predictedGrade);
-          }
+          this.loadScreenshotUrls(res.data);
+          // Reload cached to get updated predicted grade
+          this.aiService.getCachedScan(this.projectId()).subscribe({
+            next: (r) => { if (r.success) this.predictedGrade.set(r.data.predictedGrade ?? null); },
+          });
         } else {
           this.errorDeep.set(res.message ?? 'Deep scan failed');
         }
@@ -382,8 +386,23 @@ export class AiScanDialogComponent {
     });
   }
 
-  /** Open a screenshot in a new tab */
-  openScreenshot(url: string) {
+  /** Load screenshot URLs from MinIO via presigned URLs */
+  private loadScreenshotUrls(deep: DeepScanResult) {
+    const paths = deep.screenshotPaths ?? [];
+    if (!paths.length) { this.screenshotUrls.set([]); return; }
+    const urls: string[] = [];
+    let loaded = 0;
+    paths.forEach((_, i) => {
+      this.aiService.getScreenshotUrl(this.projectId(), i).subscribe({
+        next: (res) => { if (res.success) urls[i] = res.data.url; },
+        complete: () => { loaded++; if (loaded === paths.length) this.screenshotUrls.set(urls.filter(Boolean)); },
+        error: () => { loaded++; if (loaded === paths.length) this.screenshotUrls.set(urls.filter(Boolean)); },
+      });
+    });
+  }
+
+  /** Open a screenshot URL in a new tab */
+  openScreenshotUrl(url: string) {
     window.open(url, '_blank');
   }
 
@@ -397,9 +416,10 @@ export class AiScanDialogComponent {
         this.codeScanAt.set(null);
         this.deepScanResult.set(null);
         this.deepScanAt.set(null);
-        this.predictedGrade.set(null);
         this.errorCode.set(null);
         this.errorDeep.set(null);
+        this.predictedGrade.set(null);
+        this.screenshotUrls.set([]);
         this.activeTab.set(0);
       }
       // Load cached results from DB

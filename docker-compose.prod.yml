@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────────────
 # Sabr — Production Docker Compose
-# Domain: sabr.haskify.com
+# Domain: sabr.haskify.com  |  Wildcard: *.sabr.haskify.com
 # ─────────────────────────────────────────────────────
 name: sabr
 
@@ -18,9 +18,11 @@ services:
       - --providers.docker.network=sabr-net
       - --entryPoints.web.address=:80
       - --entryPoints.websecure.address=:443
-      # ── Let's Encrypt ACME — TLS challenge ──
+      # Let's Encrypt ACME – automatic SSL
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
+      # storage path changed to force refreshing certificates
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme_production.json
+      # Use TLS Challenge (Port 443) instead of HTTP Challenge (Port 80) for better reliability
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       # Redirect all HTTP → HTTPS
       - --entrypoints.web.http.redirections.entryPoint.to=websecure

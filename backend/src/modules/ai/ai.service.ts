@@ -20,6 +20,8 @@ import { MinioService } from "../../lib/minio";
 import { AppError, NotFoundError } from "../../lib/errors";
 import { env } from "../../config/env";
 
+const BUCKET = env.MINIO_BUCKET;
+
 // ── Types ────────────────────────────────────
 export interface AiScanResult {
   matchPercentage: number;
@@ -36,7 +38,7 @@ export interface DeepScanResult {
   consoleErrors: string[];
   interactiveTests: { description: string; passed: boolean; details: string }[];
   missingBehaviors: string[];
-  screenshots?: string[]; // MinIO paths (served as presigned URLs)
+  screenshotPaths?: string[]; // MinIO paths for screenshots
   pagesVisited?: string[];
 }
 
@@ -68,24 +70,19 @@ export class AiService {
     deepResult: DeepScanResult | null;
     deepScannedAt: Date | null;
     predictedGrade: number | null;
+    screenshotPaths: string[];
   }> {
     const project = await db.query.projects.findFirst({
       where: eq(projects.id, projectId),
     });
     if (!project) throw new NotFoundError("Project not found");
 
-    // Resolve screenshot MinIO paths to presigned URLs
-    let deepResult = (project.deepScanResult as DeepScanResult) ?? null;
-    if (deepResult && project.deepScanScreenshots) {
-      try {
-        const screenshotPaths: string[] = JSON.parse(project.deepScanScreenshots);
-        const urls = await Promise.all(
-          screenshotPaths.map((p) => MinioService.getFileUrl(env.MINIO_BUCKET, p, 3600)),
-        );
-        deepResult = { ...deepResult, screenshots: urls };
-      } catch {
-        // Ignore errors resolving screenshots
-      }
+    const deepResult = (project.deepScanResult as DeepScanResult) ?? null;
+    const screenshotPaths = (project.deepScanScreenshots as string[]) ?? [];
+
+    // Attach screenshot paths to deep result
+    if (deepResult) {
+      deepResult.screenshotPaths = screenshotPaths;
     }
 
     return {
@@ -93,7 +90,8 @@ export class AiService {
       scannedAt: project.aiScanAt ?? null,
       deepResult,
       deepScannedAt: project.deepScanAt ?? null,
-      predictedGrade: project.aiPredictedGrade ?? null,
+      predictedGrade: project.predictedGrade ?? null,
+      screenshotPaths,
     };
   }
 
@@ -222,6 +220,9 @@ Analyze how well this submission meets the lab requirements.`;
       .set({ aiScanResult: scanResult, aiScanAt: new Date(), updatedAt: new Date() })
       .where(eq(projects.id, projectId));
 
+    // ── Compute predicted grade ──
+    await AiService.computePredictedGrade(projectId, lab.maxGrade);
+
     return scanResult;
   }
 
@@ -236,7 +237,7 @@ Analyze how well this submission meets the lab requirements.`;
    *  3. Persist results to DB
    *  4. Auto-stop the project if it was stopped before scanning
    */
-  static async deepScanProject(projectId: string): Promise<DeepScanResult & { predictedGrade: number | null }> {
+  static async deepScanProject(projectId: string): Promise<DeepScanResult> {
     // ── Fetch project + lab ──
     const project = await db.query.projects.findFirst({
       where: eq(projects.id, projectId),
@@ -267,9 +268,9 @@ Analyze how well this submission meets the lab requirements.`;
         throw new AppError(`Could not start project for deep scan: ${msg}`);
       }
 
-      // Wait for the project to be fully ready (longer for Node.js + MySQL)
-      const waitMs = project.projectType === "nodejs" ? 15000 : 5000;
-      console.log(`🔬 Waiting ${waitMs / 1000}s for ${project.projectType} project to be ready...`);
+      // Wait for the project to be fully ready (Node.js + MySQL needs more time)
+      const waitMs = project.projectType === "nodejs" ? 15000 : 8000;
+      console.log(`🔬 Waiting ${waitMs / 1000}s for project to be ready...`);
       await new Promise((resolve) => setTimeout(resolve, waitMs));
     }
 
@@ -330,9 +331,23 @@ Analyze how well this submission meets the lab requirements.`;
             }))
           : [],
         missingBehaviors: Array.isArray(d.missingBehaviors) ? d.missingBehaviors.map(String) : [],
-        screenshots: Array.isArray(d.screenshots) ? d.screenshots.slice(0, 5) : [],
         pagesVisited: Array.isArray(d.pagesVisited) ? d.pagesVisited.map(String) : [],
       };
+
+      // ── Store screenshots in MinIO ──
+      const base64Screenshots: string[] = Array.isArray(d.screenshots) ? d.screenshots.slice(0, 5) : [];
+      const screenshotPaths: string[] = [];
+      for (let i = 0; i < base64Screenshots.length; i++) {
+        try {
+          const buf = Buffer.from(base64Screenshots[i], "base64");
+          const path = `screenshots/${projectId}/${Date.now()}_${i}.png`;
+          await MinioService.uploadFile(BUCKET, path, buf);
+          screenshotPaths.push(path);
+        } catch (err) {
+          console.error(`⚠️ Failed to upload screenshot ${i}:`, err);
+        }
+      }
+      deepResult.screenshotPaths = screenshotPaths;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("🔴 Playwright worker call failed:", msg);
@@ -344,59 +359,28 @@ Analyze how well this submission meets the lab requirements.`;
         consoleErrors: [],
         interactiveTests: [],
         missingBehaviors: ["Deep scan worker could not be reached or timed out"],
-        screenshots: [],
         pagesVisited: [],
       };
     }
 
-    // ── Upload screenshots to MinIO ──
-    const screenshotPaths: string[] = [];
-    const screenshotUrls: string[] = [];
-    if (deepResult.screenshots && deepResult.screenshots.length > 0) {
-      const ts = Date.now();
-      for (let i = 0; i < deepResult.screenshots.length; i++) {
-        try {
-          const base64 = deepResult.screenshots[i];
-          const buffer = Buffer.from(base64, "base64");
-          const objectPath = `screenshots/${projectId}/${ts}_${i}.png`;
-          await MinioService.uploadFile(env.MINIO_BUCKET, objectPath, buffer);
-          screenshotPaths.push(objectPath);
-          const url = await MinioService.getFileUrl(env.MINIO_BUCKET, objectPath, 3600);
-          screenshotUrls.push(url);
-        } catch (err) {
-          console.error(`⚠️ Failed to upload screenshot ${i} to MinIO:`, err);
-        }
-      }
-    }
-
-    // ── Calculate predicted grade ──
-    // Weighted average: code scan 40% + deep scan 60%, scaled to lab maxGrade
-    let predictedGrade: number | null = null;
-    try {
-      const codeScanResult = project.aiScanResult as AiScanResult | null;
-      const codeMatch = codeScanResult?.matchPercentage ?? deepResult.matchPercentage;
-      const deepMatch = deepResult.matchPercentage;
-      const weightedPct = codeMatch * 0.4 + deepMatch * 0.6;
-      predictedGrade = Math.round((weightedPct / 100) * (lab.maxGrade ?? 100));
-    } catch {
-      // Ignore calculation errors
-    }
-
-    // ── Persist to DB (store MinIO paths instead of base64) ──
-    const dbResult = {
-      ...deepResult,
-      screenshots: undefined, // Screenshots stored in MinIO, paths in separate column
-    };
+    // ── Persist to DB ──
     await db
       .update(projects)
       .set({
-        deepScanResult: dbResult,
+        deepScanResult: deepResult,
+        deepScanScreenshots: deepResult.screenshotPaths ?? [],
         deepScanAt: new Date(),
-        deepScanScreenshots: screenshotPaths.length > 0 ? JSON.stringify(screenshotPaths) : null,
-        aiPredictedGrade: predictedGrade,
         updatedAt: new Date(),
       })
       .where(eq(projects.id, projectId));
+
+    // ── Compute predicted grade (uses both code + deep scan) ──
+    try {
+      const lab = await db.query.labs.findFirst({ where: eq(labs.id, project.labId), columns: { maxGrade: true } });
+      if (lab) await AiService.computePredictedGrade(projectId, lab.maxGrade);
+    } catch (err) {
+      console.error("⚠️ Failed to compute predicted grade after deep scan:", err);
+    }
 
     // ── Auto-stop if we started it ──
     if (!wasAlreadyRunning) {
@@ -405,12 +389,55 @@ Analyze how well this submission meets the lab requirements.`;
         await RunnerService.stopProject(project.studentId, projectId);
       } catch (err) {
         console.error("⚠️ Failed to auto-stop project after deep scan:", err);
-        // Don't throw — the scan still succeeded
       }
     }
 
-    // Return presigned URLs instead of base64
-    return { ...deepResult, screenshots: screenshotUrls, predictedGrade };
+    return deepResult;
+  }
+
+  /* ────────────────────────────────────────
+   * Compute predicted grade from code+deep scan
+   * ──────────────────────────────────────── */
+  static async computePredictedGrade(projectId: string, maxGrade: number) {
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
+      columns: { codeScanResult: true, deepScanResult: true },
+    });
+    if (!project) return;
+
+    const codePct = (project.codeScanResult as any)?.matchPercentage ?? null;
+    const deepPct = (project.deepScanResult as any)?.matchPercentage ?? null;
+
+    let finalPct: number;
+    if (codePct !== null && deepPct !== null) {
+      finalPct = codePct * 0.6 + deepPct * 0.4; // 60% code, 40% deep
+    } else if (codePct !== null) {
+      finalPct = codePct;
+    } else if (deepPct !== null) {
+      finalPct = deepPct;
+    } else {
+      return; // no data
+    }
+
+    const predictedGrade = Math.round((finalPct / 100) * maxGrade);
+    await db
+      .update(projects)
+      .set({ predictedGrade, updatedAt: new Date() })
+      .where(eq(projects.id, projectId));
+    console.log(`🎯 Predicted grade for ${projectId}: ${predictedGrade}/${maxGrade} (${finalPct.toFixed(1)}%)`);
+  }
+
+  /* ────────────────────────────────────────
+   * Get presigned URL for a screenshot
+   * ──────────────────────────────────────── */
+  static async getScreenshotUrl(projectId: string, index: number): Promise<string | null> {
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
+      columns: { deepScanScreenshots: true },
+    });
+    const paths = (project?.deepScanScreenshots as string[]) ?? [];
+    if (index < 0 || index >= paths.length) return null;
+    return MinioService.getFileUrl(BUCKET, paths[index], 3600); // 1 hour
   }
 }
 

@@ -84,4 +84,39 @@ export const aiController = new Elysia({ prefix: "/ai" })
         tags: ["AI"],
       },
     },
+  )
+
+  // ── GET presigned screenshot URL ──
+  .get(
+    "/screenshot/:projectId/:index",
+    async ({ params, set }) => {
+      try {
+        const index = parseInt(params.index, 10);
+        if (isNaN(index) || index < 0) {
+          set.status = 400;
+          return { success: false, message: "Invalid screenshot index" };
+        }
+        const url = await AiService.getScreenshotUrl(params.projectId, index);
+        if (!url) {
+          set.status = 404;
+          return { success: false, message: "Screenshot not found" };
+        }
+        return { success: true, data: { url } };
+      } catch (err) {
+        const { message, statusCode } = sanitizeError(err);
+        set.status = statusCode;
+        return { success: false, message };
+      }
+    },
+    {
+      params: t.Object({
+        projectId: t.String({ format: "uuid" }),
+        index: t.String(),
+      }),
+      detail: {
+        summary: "Get screenshot URL",
+        description: "Returns a presigned MinIO URL for a deep scan screenshot.",
+        tags: ["AI"],
+      },
+    },
   );

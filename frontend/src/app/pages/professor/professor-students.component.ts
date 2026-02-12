@@ -85,6 +85,7 @@ import { StudentRow, Project } from '../../core/models/project.model';
                             <th class="pb-2">{{ 'common.status' | translate }}</th>
                             <th class="pb-2">{{ 'professor.lab' | translate }}</th>
                             <th class="pb-2">{{ 'professor.grade' | translate }}</th>
+                            <th class="pb-2">{{ 'professor.predictedGrade' | translate }}</th>
                             <th class="pb-2">{{ 'common.created' | translate }}</th>
                             <th class="pb-2 text-right">{{ 'common.actions' | translate }}</th>
                           </tr>
@@ -117,6 +118,14 @@ import { StudentRow, Project } from '../../core/models/project.model';
                                       [loading]="gradingIds().has(project.id)"
                                       (onClick)="saveGrade(project); $event.stopPropagation()" size="small" />
                                   </div>
+                                } @else {
+                                  <span class="text-slate-400">—</span>
+                                }
+                              </td>
+                              <td class="py-2">
+                                @if (project.predictedGrade !== null && project.predictedGrade !== undefined) {
+                                  <span class="font-semibold text-blue-600">{{ project.predictedGrade }}</span>
+                                  <span class="text-xs text-secondary">/ {{ getLabMaxGrade(project.labId) }}</span>
                                 } @else {
                                   <span class="text-slate-400">—</span>
                                 }

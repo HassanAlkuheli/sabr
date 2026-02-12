@@ -75,6 +75,7 @@ import { Lab } from '../../core/models/project.model';
               <th>{{ 'student.mySubmission' | translate }}</th>
               <th>{{ 'student.projectStatus' | translate }}</th>
               <th>{{ 'professor.grade' | translate }}</th>
+              <th>{{ 'professor.predictedGrade' | translate }}</th>
               <th class="text-right">{{ 'common.actions' | translate }}</th>
             </tr>
           </ng-template>
@@ -124,6 +125,19 @@ import { Lab } from '../../core/models/project.model';
                     }
                   } @else {
                     <span class="text-slate-400 italic text-sm">{{ 'professor.notGraded' | translate }}</span>
+                  }
+                } @else {
+                  <span class="text-slate-400">—</span>
+                }
+              </td>
+              <td>
+                @if (state.getProjectForLab(lab.id); as project) {
+                  @if (project.predictedGrade !== null && project.predictedGrade !== undefined) {
+                    <span class="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                      {{ project.predictedGrade }} / {{ lab.maxGrade }}
+                    </span>
+                  } @else {
+                    <span class="text-slate-400">—</span>
                   }
                 } @else {
                   <span class="text-slate-400">—</span>
@@ -267,6 +281,11 @@ import { Lab } from '../../core/models/project.model';
                 @if (project.gradeMessage) {
                   <p class="text-xs text-secondary mt-0.5">{{ project.gradeMessage }}</p>
                 }
+              }
+              @if (project.predictedGrade !== null && project.predictedGrade !== undefined) {
+                <p class="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">
+                  {{ 'professor.predictedGrade' | translate }}: {{ project.predictedGrade }} / {{ lab.maxGrade }}
+                </p>
               }
             </div>
           }

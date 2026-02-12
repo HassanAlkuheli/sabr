@@ -54,6 +54,9 @@ export async function runDeepScan(input: DeepScanInput): Promise<DeepScanOutput>
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--single-process",
+        "--disable-features=SafeBrowsing,IsolateOrigins,site-per-process",
+        "--safebrowsing-disable-auto-update",
+        "--disable-background-networking",
       ],
       headless: true,
     });
@@ -90,7 +93,7 @@ export async function runDeepScan(input: DeepScanInput): Promise<DeepScanOutput>
     let pageLoads = false;
 
     try {
-      const response = await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 15000 });
+      const response = await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 30000 });
       pageLoads = response !== null && response.status() < 400;
       pagesVisited.push(baseUrl);
 

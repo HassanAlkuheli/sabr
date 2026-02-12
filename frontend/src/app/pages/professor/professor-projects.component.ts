@@ -94,6 +94,7 @@ import { LogsDialogComponent } from '../../shared/components/logs-dialog.compone
               <th pSortableColumn="sectionNumber">{{ 'common.section' | translate }} <p-sortIcon field="sectionNumber" /></th>
               <th>{{ 'professor.lab' | translate }}</th>
               <th>{{ 'professor.grade' | translate }}</th>
+              <th>{{ 'professor.predictedGrade' | translate }}</th>
               <th>{{ 'common.status' | translate }}</th>
               <th class="text-right">{{ 'common.actions' | translate }}</th>
             </tr>
@@ -118,10 +119,13 @@ import { LogsDialogComponent } from '../../shared/components/logs-dialog.compone
                 } @else {
                   <span class="text-slate-400 text-sm italic">—</span>
                 }
-                @if (p.aiPredictedGrade !== null && p.aiPredictedGrade !== undefined) {
-                  <div class="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">
-                    <i class="pi pi-sparkles text-[10px]"></i> {{ 'ai.predictedGrade' | translate }}: {{ p.aiPredictedGrade }} / {{ getLabMaxGrade(p.labId) }}
-                  </div>
+              </td>
+              <td>
+                @if (p.predictedGrade !== null && p.predictedGrade !== undefined) {
+                  <span class="font-semibold text-blue-600">{{ p.predictedGrade }}</span>
+                  <span class="text-xs text-secondary">/ {{ getLabMaxGrade(p.labId) }}</span>
+                } @else {
+                  <span class="text-slate-400 text-sm italic">—</span>
                 }
               </td>
               <td><app-status-badge [status]="p.status" /></td>
@@ -167,7 +171,7 @@ import { LogsDialogComponent } from '../../shared/components/logs-dialog.compone
             </tr>
           </ng-template>
           <ng-template pTemplate="emptymessage">
-            <tr><td colspan="7" class="text-center py-8 text-secondary">{{ 'common.noProjects' | translate }}</td></tr>
+            <tr><td colspan="8" class="text-center py-8 text-secondary">{{ 'common.noProjects' | translate }}</td></tr>
           </ng-template>
         </p-table>
       </div>
@@ -209,7 +213,6 @@ import { LogsDialogComponent } from '../../shared/components/logs-dialog.compone
     <app-ai-scan-dialog
       [visible]="showAiScan()"
       [projectId]="aiScanProjectId()"
-      [maxGrade]="aiScanMaxGrade()"
       (closed)="closeAiScan()"
     />
   `,
@@ -235,7 +238,6 @@ export class ProfessorProjectsComponent {
   // AI scan
   showAiScan = signal(false);
   aiScanProjectId = signal('');
-  aiScanMaxGrade = signal(100);
 
   constructor() {
     effect(() => {
@@ -313,7 +315,6 @@ export class ProfessorProjectsComponent {
 
   openAiScan(p: AdminProject) {
     this.aiScanProjectId.set(p.id);
-    this.aiScanMaxGrade.set(this.getLabMaxGrade(p.labId));
     this.showAiScan.set(true);
   }
 

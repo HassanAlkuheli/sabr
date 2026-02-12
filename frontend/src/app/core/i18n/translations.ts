@@ -171,6 +171,7 @@ export const EN: Translations = {
   'professor.labs': 'Labs',
   'professor.lab': 'Lab',
   'professor.grade': 'Grade',
+  'professor.predictedGrade': 'AI Grade',
   'professor.grades': 'Grades',
   'professor.message': 'Message',
   'professor.gradeProject': 'Grade Project',
@@ -278,8 +279,7 @@ export const EN: Translations = {
   'ai.pagesVisited': 'Pages Visited',
   'ai.screenshots': 'Screenshots',
   'ai.deepScanWait': 'This may take 1-2 minutes. The project will be auto-started and tested with a real browser.',
-  'ai.predictedGrade': 'Predicted Grade',
-  'ai.predictedGradeHint': 'Based on code analysis (40%) and deep scan (60%)',
+  'ai.predictedGrade': 'AI Predicted Grade',
 
   // ─── Password Reset ─────────────────
   'auth.forgotPassword': 'Forgot password?',
@@ -460,6 +460,7 @@ export const AR: Translations = {
   'professor.labs': 'المختبرات',
   'professor.lab': 'المختبر',
   'professor.grade': 'الدرجة',
+  'professor.predictedGrade': 'درجة الذكاء الاصطناعي',
   'professor.grades': 'الدرجات',
   'professor.message': 'الرسالة',
   'professor.gradeProject': 'تقييم المشروع',
@@ -567,8 +568,7 @@ export const AR: Translations = {
   'ai.pagesVisited': 'الصفحات التي تمت زيارتها',
   'ai.screenshots': 'لقطات الشاشة',
   'ai.deepScanWait': 'قد يستغرق هذا 1-2 دقيقة. سيتم تشغيل المشروع واختباره بمتصفح حقيقي.',
-  'ai.predictedGrade': 'الدرجة المتوقعة',
-  'ai.predictedGradeHint': 'بناءً على تحليل الكود (40%) والفحص العميق (60%)',
+  'ai.predictedGrade': 'الدرجة المتوقعة من الذكاء الاصطناعي',
 
   // ─── Password Reset ─────────────────
   'auth.forgotPassword': 'نسيت كلمة المرور؟',

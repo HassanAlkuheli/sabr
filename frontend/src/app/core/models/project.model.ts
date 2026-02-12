@@ -15,7 +15,7 @@ export interface Project {
   labId: string | null;
   grade: number | null;
   gradeMessage: string | null;
-  aiPredictedGrade: number | null;
+  predictedGrade: number | null;
   errorMessage: string | null;
   createdAt: string;
   updatedAt: string;
@@ -50,7 +50,7 @@ export interface AdminProject {
   labId: string | null;
   grade: number | null;
   gradeMessage: string | null;
-  aiPredictedGrade: number | null;
+  predictedGrade: number | null;
   errorMessage: string | null;
 }
 

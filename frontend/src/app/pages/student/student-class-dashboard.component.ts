@@ -134,6 +134,7 @@ import { StudentStateService } from './student-state.service';
                             <th class="pb-2">{{ 'student.mySubmission' | translate }}</th>
                             <th class="pb-2">{{ 'student.projectStatus' | translate }}</th>
                             <th class="pb-2">{{ 'professor.grade' | translate }}</th>
+                            <th class="pb-2">{{ 'professor.predictedGrade' | translate }}</th>
                             <th class="pb-2 text-right">{{ 'common.actions' | translate }}</th>
                           </tr>
                         </thead>
@@ -176,6 +177,19 @@ import { StudentStateService } from './student-state.service';
                                     }
                                   } @else {
                                     <span class="text-slate-400 italic">{{ 'professor.notGraded' | translate }}</span>
+                                  }
+                                } @else {
+                                  <span class="text-slate-400">—</span>
+                                }
+                              </td>
+                              <td class="py-2">
+                                @if (getProjectForLab(lab.id); as project) {
+                                  @if (project.predictedGrade !== null && project.predictedGrade !== undefined) {
+                                    <span class="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                      {{ project.predictedGrade }} / {{ lab.maxGrade }}
+                                    </span>
+                                  } @else {
+                                    <span class="text-slate-400">—</span>
                                   }
                                 } @else {
                                   <span class="text-slate-400">—</span>
