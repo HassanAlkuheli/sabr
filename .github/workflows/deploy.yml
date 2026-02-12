@@ -25,6 +25,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Free disk space
+        run: |
+          echo "🧹 Cleaning up Docker to free disk space..."
+          docker system prune -af --volumes 2>/dev/null || true
+          echo "Disk usage after cleanup:"
+          df -h / | tail -1
+
       - name: Build backend image
         run: |
           docker build --no-cache \
