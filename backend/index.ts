@@ -14,6 +14,12 @@ import { professorController } from "./src/modules/professor/professor.controlle
 import { aiController } from "./src/modules/ai/ai.controller";
 import { RunnerService } from "./src/modules/runner/runner.service";
 import { ViewerService } from "./src/modules/viewer/viewer.service";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+
+// ── Run pending migrations before anything else ──
+console.log("🗂️  Running database migrations...");
+await migrate(db, { migrationsFolder: "./drizzle" });
+console.log("✅ Migrations complete");
 
 const app = new Elysia()
   .use(
