@@ -77,8 +77,6 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SMTP_EMAIL: ${{ secrets.SMTP_EMAIL }}
           SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
-          CF_API_EMAIL: ${{ secrets.CF_API_EMAIL }}
-          CF_DNS_API_TOKEN: ${{ secrets.CF_DNS_API_TOKEN }}
           
           # Configurable values (safe defaults)
           ACME_EMAIL: ${{ secrets.ACME_EMAIL || 'admin@sabr.haskify.com' }}
@@ -134,8 +132,6 @@ jobs:
             echo "FRONTEND_URL=$FRONTEND_URL"
             echo "ADMIN_PASSWORD=$ADMIN_PASSWORD"
             echo "SEED_PASSWORD=$SEED_PASSWORD"
-            echo "CF_API_EMAIL=$CF_API_EMAIL"
-            echo "CF_DNS_API_TOKEN=$CF_DNS_API_TOKEN"
           } >> .env
           
           echo "✅ .env file created successfully"

@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────────────
 # Sabr — Production Docker Compose
-# Domain: sabr.haskify.com  |  Wildcard: *.sabr.haskify.com
+# Domain: sabr.haskify.com
 # ─────────────────────────────────────────────────────
 name: sabr
 
@@ -18,18 +18,13 @@ services:
       - --providers.docker.network=sabr-net
       - --entryPoints.web.address=:80
       - --entryPoints.websecure.address=:443
-      # ── Let's Encrypt ACME — Cloudflare DNS challenge for wildcard SSL ──
+      # ── Let's Encrypt ACME — TLS challenge ──
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme_production.json
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
-      - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       # Redirect all HTTP → HTTPS
       - --entrypoints.web.http.redirections.entryPoint.to=websecure
       - --entrypoints.web.http.redirections.entryPoint.scheme=https
-    environment:
-      CF_API_EMAIL: ${CF_API_EMAIL:?CF_API_EMAIL is required}
-      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN:?CF_DNS_API_TOKEN is required}
     ports:
       - "80:80"
       - "443:443"
@@ -46,9 +41,6 @@ services:
       - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
       - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik-dashboard.service=api@internal"
-      # Request wildcard cert for *.sabr.haskify.com
-      - "traefik.http.routers.traefik-dashboard.tls.domains[0].main=sabr.haskify.com"
-      - "traefik.http.routers.traefik-dashboard.tls.domains[0].sans=*.sabr.haskify.com"
 
   # ── PostgreSQL ──────────────────────────────
   postgres:
