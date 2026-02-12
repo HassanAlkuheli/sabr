@@ -88,9 +88,10 @@ Visit http://localhost:4200/ to access the UI. Login as a professor or student t
 ## Contribution
 Feel free to open issues or PRs against the `main` branch. Describe new deployment scenarios, runner hooks, or UI improvements so the platform can serve even more courses.
 
-<img width="1919" height="951" alt="Screenshot_6" src="https://github.com/user-attachments/assets/a1c3203b-0be0-4cc6-8e40-83c3d875ba5c" />
-<img width="1919" height="951" alt="Screenshot_7" src="https://github.com/user-attachments/assets/dad19b07-a6b7-4e81-852d-a347ce52be4e" />
 <img width="1919" height="949" alt="Screenshot_8" src="https://github.com/user-attachments/assets/8773a000-2668-44dd-b013-164bfb065ae5" />
 <img width="1919" height="954" alt="Screenshot_4" src="https://github.com/user-attachments/assets/1563b2e3-850d-4e8a-961b-1acb92fb092d" />
+<img width="1919" height="951" alt="Screenshot_7" src="https://github.com/user-attachments/assets/dad19b07-a6b7-4e81-852d-a347ce52be4e" />
 <img width="1919" height="948" alt="Screenshot_5" src="https://github.com/user-attachments/assets/cd18d18b-5955-42fa-8b1a-cfd83f97f97b" />
+<img width="1919" height="951" alt="Screenshot_6" src="https://github.com/user-attachments/assets/a1c3203b-0be0-4cc6-8e40-83c3d875ba5c" />
+
 
