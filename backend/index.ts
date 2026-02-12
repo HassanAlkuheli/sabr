@@ -21,6 +21,15 @@ console.log("🗂️  Running database migrations...");
 await migrate(db, { migrationsFolder: "./drizzle" });
 console.log("✅ Migrations complete");
 
+// ── Ensure new columns exist (fixes drift from recorded-but-not-applied migrations) ──
+try {
+  await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "predicted_grade" integer`);
+  await db.execute(sql`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "deep_scan_screenshots" jsonb`);
+  console.log("✅ Schema columns verified");
+} catch (e) {
+  console.error("⚠️ Column check error (non-fatal):", e);
+}
+
 const app = new Elysia()
   .use(
     cors({
