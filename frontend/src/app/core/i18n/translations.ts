@@ -278,6 +278,8 @@ export const EN: Translations = {
   'ai.pagesVisited': 'Pages Visited',
   'ai.screenshots': 'Screenshots',
   'ai.deepScanWait': 'This may take 1-2 minutes. The project will be auto-started and tested with a real browser.',
+  'ai.predictedGrade': 'Predicted Grade',
+  'ai.predictedGradeHint': 'Based on code analysis (40%) and deep scan (60%)',
 
   // ─── Password Reset ─────────────────
   'auth.forgotPassword': 'Forgot password?',
@@ -565,6 +567,8 @@ export const AR: Translations = {
   'ai.pagesVisited': 'الصفحات التي تمت زيارتها',
   'ai.screenshots': 'لقطات الشاشة',
   'ai.deepScanWait': 'قد يستغرق هذا 1-2 دقيقة. سيتم تشغيل المشروع واختباره بمتصفح حقيقي.',
+  'ai.predictedGrade': 'الدرجة المتوقعة',
+  'ai.predictedGradeHint': 'بناءً على تحليل الكود (40%) والفحص العميق (60%)',
 
   // ─── Password Reset ─────────────────
   'auth.forgotPassword': 'نسيت كلمة المرور؟',

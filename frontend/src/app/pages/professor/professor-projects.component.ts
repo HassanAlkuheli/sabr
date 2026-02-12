@@ -118,6 +118,11 @@ import { LogsDialogComponent } from '../../shared/components/logs-dialog.compone
                 } @else {
                   <span class="text-slate-400 text-sm italic">—</span>
                 }
+                @if (p.aiPredictedGrade !== null && p.aiPredictedGrade !== undefined) {
+                  <div class="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">
+                    <i class="pi pi-sparkles text-[10px]"></i> {{ 'ai.predictedGrade' | translate }}: {{ p.aiPredictedGrade }} / {{ getLabMaxGrade(p.labId) }}
+                  </div>
+                }
               </td>
               <td><app-status-badge [status]="p.status" /></td>
               <td class="text-right space-x-1">
@@ -204,6 +209,7 @@ import { LogsDialogComponent } from '../../shared/components/logs-dialog.compone
     <app-ai-scan-dialog
       [visible]="showAiScan()"
       [projectId]="aiScanProjectId()"
+      [maxGrade]="aiScanMaxGrade()"
       (closed)="closeAiScan()"
     />
   `,
@@ -229,6 +235,7 @@ export class ProfessorProjectsComponent {
   // AI scan
   showAiScan = signal(false);
   aiScanProjectId = signal('');
+  aiScanMaxGrade = signal(100);
 
   constructor() {
     effect(() => {
@@ -306,6 +313,7 @@ export class ProfessorProjectsComponent {
 
   openAiScan(p: AdminProject) {
     this.aiScanProjectId.set(p.id);
+    this.aiScanMaxGrade.set(this.getLabMaxGrade(p.labId));
     this.showAiScan.set(true);
   }
 

@@ -85,6 +85,13 @@
       "when": 1770858000000,
       "tag": "0011_add-starting-status",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1770856919676,
+      "tag": "0012_add-predicted-grade-and-screenshots",
+      "breakpoints": true
     }
   ]
 }

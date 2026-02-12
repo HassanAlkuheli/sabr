@@ -88,6 +88,10 @@ export const projects = pgTable("projects", {
   deepScanResult: jsonb("deep_scan_result"),
   /** When the deep scan was last run */
   deepScanAt: timestamp("deep_scan_at", { withTimezone: true }),
+  /** AI predicted grade based on code scan + deep scan */
+  aiPredictedGrade: integer("ai_predicted_grade"),
+  /** MinIO paths to deep scan screenshots (JSON array) */
+  deepScanScreenshots: text("deep_scan_screenshots"),
   lastActive: timestamp("last_active", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

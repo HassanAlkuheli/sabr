@@ -27,6 +27,20 @@ import { DatePipe } from '@angular/common';
           <p-tab [value]="0">{{ 'ai.codeScan' | translate }}</p-tab>
           <p-tab [value]="1">{{ 'ai.deepScan' | translate }}</p-tab>
         </p-tablist>
+
+        <!-- ═══ Predicted Grade Banner ═══ -->
+        @if (predictedGrade() !== null) {
+          <div class="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/30 rounded-lg px-4 py-3 my-3 border border-indigo-200 dark:border-indigo-700">
+            <div>
+              <span class="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{{ 'ai.predictedGrade' | translate }}</span>
+              <p class="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">{{ 'ai.predictedGradeHint' | translate }}</p>
+            </div>
+            <div class="text-3xl font-bold" [class]="percentColor((predictedGrade()! / maxGrade()) * 100)">
+              {{ predictedGrade() }}<span class="text-lg text-secondary">/{{ maxGrade() }}</span>
+            </div>
+          </div>
+        }
+
         <p-tabpanels>
         <!-- ═══ TAB: Code Scan ═══ -->
         <p-tabpanel [value]="0">
@@ -236,7 +250,7 @@ import { DatePipe } from '@angular/common';
                   </h4>
                   <div class="grid grid-cols-2 gap-2">
                     @for (ss of deepScanResult()!.screenshots!; track $index) {
-                      <img [src]="'data:image/png;base64,' + ss"
+                      <img [src]="ss"
                            class="rounded border border-slate-200 dark:border-slate-600 cursor-pointer hover:opacity-80 transition-opacity"
                            (click)="openScreenshot(ss)"
                            alt="Screenshot {{ $index + 1 }}" />
@@ -263,6 +277,7 @@ import { DatePipe } from '@angular/common';
 export class AiScanDialogComponent {
   visible = input.required<boolean>();
   projectId = input.required<string>();
+  maxGrade = input<number>(100);
   closed = output<void>();
 
   private aiService = inject(AiService);
@@ -281,6 +296,9 @@ export class AiScanDialogComponent {
   errorDeep = signal<string | null>(null);
   deepScanResult = signal<DeepScanResult | null>(null);
   deepScanAt = signal<string | null>(null);
+
+  // Predicted grade
+  predictedGrade = signal<number | null>(null);
 
   // Loading cached results
   loadingCached = signal(false);
@@ -305,6 +323,9 @@ export class AiScanDialogComponent {
           if (res.data.deepResult) {
             this.deepScanResult.set(res.data.deepResult);
             this.deepScanAt.set(res.data.deepScannedAt);
+          }
+          if (res.data.predictedGrade != null) {
+            this.predictedGrade.set(res.data.predictedGrade);
           }
         }
       },
@@ -347,6 +368,9 @@ export class AiScanDialogComponent {
         if (res.success) {
           this.deepScanResult.set(res.data);
           this.deepScanAt.set(new Date().toISOString());
+          if ((res.data as any).predictedGrade != null) {
+            this.predictedGrade.set((res.data as any).predictedGrade);
+          }
         } else {
           this.errorDeep.set(res.message ?? 'Deep scan failed');
         }
@@ -359,12 +383,8 @@ export class AiScanDialogComponent {
   }
 
   /** Open a screenshot in a new tab */
-  openScreenshot(base64: string) {
-    const win = window.open();
-    if (win) {
-      win.document.write(`<img src="data:image/png;base64,${base64}" style="max-width:100%;height:auto" />`);
-      win.document.title = 'Deep Scan Screenshot';
-    }
+  openScreenshot(url: string) {
+    window.open(url, '_blank');
   }
 
   // When dialog opens, load cached results; reset if project changed
@@ -377,6 +397,7 @@ export class AiScanDialogComponent {
         this.codeScanAt.set(null);
         this.deepScanResult.set(null);
         this.deepScanAt.set(null);
+        this.predictedGrade.set(null);
         this.errorCode.set(null);
         this.errorDeep.set(null);
         this.activeTab.set(0);

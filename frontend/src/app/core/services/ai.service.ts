@@ -18,8 +18,9 @@ export interface DeepScanResult {
   consoleErrors: string[];
   interactiveTests: { description: string; passed: boolean; details: string }[];
   missingBehaviors: string[];
-  screenshots?: string[];   // base64 PNG
+  screenshots?: string[];   // presigned MinIO URLs
   pagesVisited?: string[];  // URLs visited
+  predictedGrade?: number | null;
 }
 
 export interface CachedScanData {
@@ -27,6 +28,7 @@ export interface CachedScanData {
   scannedAt: string | null;
   deepResult: DeepScanResult | null;
   deepScannedAt: string | null;
+  predictedGrade: number | null;
 }
 
 @Injectable({ providedIn: 'root' })

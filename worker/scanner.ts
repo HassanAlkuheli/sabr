@@ -32,7 +32,7 @@ export interface DeepScanOutput {
 }
 
 const CHROMIUM_PATH = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/usr/bin/chromium";
-const TIMEOUT_MS = 60_000; // 1 min max per scan
+const TIMEOUT_MS = 120_000; // 2 min max per scan
 const MAX_PAGES = 6;
 const MAX_INTERACTIONS = 15;
 
@@ -65,8 +65,8 @@ export async function runDeepScan(input: DeepScanInput): Promise<DeepScanOutput>
     });
 
     // Set global timeout
-    context.setDefaultTimeout(10000);
-    context.setDefaultNavigationTimeout(15000);
+    context.setDefaultTimeout(15000);
+    context.setDefaultNavigationTimeout(30000);
 
     const page = await context.newPage();
 

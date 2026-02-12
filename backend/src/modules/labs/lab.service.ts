@@ -266,6 +266,7 @@ export class LabService {
         labId: projects.labId,
         grade: projects.grade,
         gradeMessage: projects.gradeMessage,
+        aiPredictedGrade: projects.aiPredictedGrade,
         errorMessage: projects.errorMessage,
       })
       .from(projects)
@@ -333,6 +334,7 @@ export class LabService {
         labId: projects.labId,
         grade: projects.grade,
         gradeMessage: projects.gradeMessage,
+        aiPredictedGrade: projects.aiPredictedGrade,
         errorMessage: projects.errorMessage,
       })
       .from(projects)
@@ -365,6 +367,7 @@ export class LabService {
         labId: projects.labId,
         grade: projects.grade,
         gradeMessage: projects.gradeMessage,
+        aiPredictedGrade: projects.aiPredictedGrade,
         errorMessage: projects.errorMessage,
       })
       .from(projects)

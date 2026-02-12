@@ -16,6 +16,7 @@ import { projects, labs } from "../../db/schema";
 import { eq } from "drizzle-orm";
 import { ViewerService } from "../viewer/viewer.service";
 import { RunnerService } from "../runner/runner.service";
+import { MinioService } from "../../lib/minio";
 import { AppError, NotFoundError } from "../../lib/errors";
 import { env } from "../../config/env";
 
@@ -35,7 +36,7 @@ export interface DeepScanResult {
   consoleErrors: string[];
   interactiveTests: { description: string; passed: boolean; details: string }[];
   missingBehaviors: string[];
-  screenshots?: string[]; // base64 PNG thumbnails
+  screenshots?: string[]; // MinIO paths (served as presigned URLs)
   pagesVisited?: string[];
 }
 
@@ -66,17 +67,33 @@ export class AiService {
     scannedAt: Date | null;
     deepResult: DeepScanResult | null;
     deepScannedAt: Date | null;
+    predictedGrade: number | null;
   }> {
     const project = await db.query.projects.findFirst({
       where: eq(projects.id, projectId),
     });
     if (!project) throw new NotFoundError("Project not found");
 
+    // Resolve screenshot MinIO paths to presigned URLs
+    let deepResult = (project.deepScanResult as DeepScanResult) ?? null;
+    if (deepResult && project.deepScanScreenshots) {
+      try {
+        const screenshotPaths: string[] = JSON.parse(project.deepScanScreenshots);
+        const urls = await Promise.all(
+          screenshotPaths.map((p) => MinioService.getFileUrl(env.MINIO_BUCKET, p, 3600)),
+        );
+        deepResult = { ...deepResult, screenshots: urls };
+      } catch {
+        // Ignore errors resolving screenshots
+      }
+    }
+
     return {
       result: (project.aiScanResult as AiScanResult) ?? null,
       scannedAt: project.aiScanAt ?? null,
-      deepResult: (project.deepScanResult as DeepScanResult) ?? null,
+      deepResult,
       deepScannedAt: project.deepScanAt ?? null,
+      predictedGrade: project.aiPredictedGrade ?? null,
     };
   }
 
@@ -219,7 +236,7 @@ Analyze how well this submission meets the lab requirements.`;
    *  3. Persist results to DB
    *  4. Auto-stop the project if it was stopped before scanning
    */
-  static async deepScanProject(projectId: string): Promise<DeepScanResult> {
+  static async deepScanProject(projectId: string): Promise<DeepScanResult & { predictedGrade: number | null }> {
     // ── Fetch project + lab ──
     const project = await db.query.projects.findFirst({
       where: eq(projects.id, projectId),
@@ -250,8 +267,10 @@ Analyze how well this submission meets the lab requirements.`;
         throw new AppError(`Could not start project for deep scan: ${msg}`);
       }
 
-      // Wait a few seconds for the project to be fully ready
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      // Wait for the project to be fully ready (longer for Node.js + MySQL)
+      const waitMs = project.projectType === "nodejs" ? 15000 : 5000;
+      console.log(`🔬 Waiting ${waitMs / 1000}s for ${project.projectType} project to be ready...`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
     }
 
     if (!projectUrl) {
@@ -266,7 +285,7 @@ Analyze how well this submission meets the lab requirements.`;
       console.log(`🔬 Calling Playwright worker at ${workerUrl}/deep-scan for ${projectUrl}`);
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 90_000); // 90s total timeout
+      const timeout = setTimeout(() => controller.abort(), 180_000); // 3 min total timeout
 
       const workerResponse = await fetch(`${workerUrl}/deep-scan`, {
         method: "POST",
@@ -330,14 +349,53 @@ Analyze how well this submission meets the lab requirements.`;
       };
     }
 
-    // ── Persist to DB (strip screenshots to keep jsonb small) ──
+    // ── Upload screenshots to MinIO ──
+    const screenshotPaths: string[] = [];
+    const screenshotUrls: string[] = [];
+    if (deepResult.screenshots && deepResult.screenshots.length > 0) {
+      const ts = Date.now();
+      for (let i = 0; i < deepResult.screenshots.length; i++) {
+        try {
+          const base64 = deepResult.screenshots[i];
+          const buffer = Buffer.from(base64, "base64");
+          const objectPath = `screenshots/${projectId}/${ts}_${i}.png`;
+          await MinioService.uploadFile(env.MINIO_BUCKET, objectPath, buffer);
+          screenshotPaths.push(objectPath);
+          const url = await MinioService.getFileUrl(env.MINIO_BUCKET, objectPath, 3600);
+          screenshotUrls.push(url);
+        } catch (err) {
+          console.error(`⚠️ Failed to upload screenshot ${i} to MinIO:`, err);
+        }
+      }
+    }
+
+    // ── Calculate predicted grade ──
+    // Weighted average: code scan 40% + deep scan 60%, scaled to lab maxGrade
+    let predictedGrade: number | null = null;
+    try {
+      const codeScanResult = project.aiScanResult as AiScanResult | null;
+      const codeMatch = codeScanResult?.matchPercentage ?? deepResult.matchPercentage;
+      const deepMatch = deepResult.matchPercentage;
+      const weightedPct = codeMatch * 0.4 + deepMatch * 0.6;
+      predictedGrade = Math.round((weightedPct / 100) * (lab.maxGrade ?? 100));
+    } catch {
+      // Ignore calculation errors
+    }
+
+    // ── Persist to DB (store MinIO paths instead of base64) ──
     const dbResult = {
       ...deepResult,
-      screenshots: undefined, // Don't store large base64 images in DB
+      screenshots: undefined, // Screenshots stored in MinIO, paths in separate column
     };
     await db
       .update(projects)
-      .set({ deepScanResult: dbResult, deepScanAt: new Date(), updatedAt: new Date() })
+      .set({
+        deepScanResult: dbResult,
+        deepScanAt: new Date(),
+        deepScanScreenshots: screenshotPaths.length > 0 ? JSON.stringify(screenshotPaths) : null,
+        aiPredictedGrade: predictedGrade,
+        updatedAt: new Date(),
+      })
       .where(eq(projects.id, projectId));
 
     // ── Auto-stop if we started it ──
@@ -351,7 +409,8 @@ Analyze how well this submission meets the lab requirements.`;
       }
     }
 
-    return deepResult;
+    // Return presigned URLs instead of base64
+    return { ...deepResult, screenshots: screenshotUrls, predictedGrade };
   }
 }
 

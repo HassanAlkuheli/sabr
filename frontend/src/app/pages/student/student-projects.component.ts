@@ -208,8 +208,18 @@ import { Project } from '../../core/models/project.model';
                   @if (project.gradeMessage) {
                     <div class="text-xs text-secondary mt-0.5">{{ project.gradeMessage }}</div>
                   }
+                  @if (project.aiPredictedGrade !== null && project.aiPredictedGrade !== undefined) {
+                    <div class="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">
+                      <i class="pi pi-sparkles text-[10px]"></i> {{ 'ai.predictedGrade' | translate }}: {{ project.aiPredictedGrade }}
+                    </div>
+                  }
                 } @else if (project.labId) {
                   <span class="text-slate-400 italic text-sm">{{ 'professor.notGraded' | translate }}</span>
+                  @if (project.aiPredictedGrade !== null && project.aiPredictedGrade !== undefined) {
+                    <div class="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">
+                      <i class="pi pi-sparkles text-[10px]"></i> {{ 'ai.predictedGrade' | translate }}: {{ project.aiPredictedGrade }} / {{ state.getLabMaxGrade(project.labId) }}
+                    </div>
+                  }
                 } @else {
                   <span class="text-slate-400">—</span>
                 }
@@ -334,6 +344,7 @@ import { Project } from '../../core/models/project.model';
     <app-ai-scan-dialog
       [visible]="showAiScan()"
       [projectId]="aiScanProjectId()"
+      [maxGrade]="aiScanMaxGrade()"
       (closed)="closeAiScan()"
     />
   `,
@@ -351,6 +362,7 @@ export class StudentProjectsComponent {
   // AI scan
   showAiScan = signal(false);
   aiScanProjectId = signal('');
+  aiScanMaxGrade = signal(100);
 
   projectName = '';
   selectedFile: File | null = null;
@@ -427,6 +439,7 @@ export class StudentProjectsComponent {
 
   openAiScan(project: Project) {
     this.aiScanProjectId.set(project.id);
+    this.aiScanMaxGrade.set(this.state.getLabMaxGrade(project.labId) ?? 100);
     this.showAiScan.set(true);
   }
 
