@@ -454,8 +454,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
       return { url, adminUrl };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error("🚨 Deploy error:", errorMsg);
-      await log(workspace, `ERROR: ${errorMsg}`).catch(() => {});
+      const cause = err instanceof Error && err.cause ? ` | Cause: ${err.cause instanceof Error ? err.cause.message : String(err.cause)}` : "";
+      console.error("🚨 Deploy error:", errorMsg + cause);
+      await log(workspace, `ERROR: ${errorMsg}${cause}`).catch(() => {});
       try {
         await db
           .update(projects)

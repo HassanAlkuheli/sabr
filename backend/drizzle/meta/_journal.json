@@ -78,6 +78,13 @@
       "when": 1770850884206,
       "tag": "0010_add-ai-scan-columns",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1770858000000,
+      "tag": "0011_add-starting-status",
+      "breakpoints": true
     }
   ]
 }
