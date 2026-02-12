@@ -4,6 +4,7 @@ import { swagger } from "@elysiajs/swagger";
 import { env } from "./src/config/env";
 import { AppError, sanitizeError } from "./src/lib/errors";
 import { sql } from "drizzle-orm";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { authController } from "./src/modules/auth/auth.controller";
 import { db } from "./src/db";
 import { adminController } from "./src/modules/admin/admin.controller";
@@ -14,6 +15,11 @@ import { professorController } from "./src/modules/professor/professor.controlle
 import { aiController } from "./src/modules/ai/ai.controller";
 import { RunnerService } from "./src/modules/runner/runner.service";
 import { ViewerService } from "./src/modules/viewer/viewer.service";
+
+// ── Run pending migrations before anything else ──
+console.log("🗃️  Running database migrations...");
+await migrate(db, { migrationsFolder: "./drizzle" });
+console.log("✅ Migrations complete");
 
 const app = new Elysia()
   .use(
