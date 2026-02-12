@@ -86,7 +86,7 @@ export const aiController = new Elysia({ prefix: "/ai" })
     },
   )
 
-  // ── GET presigned screenshot URL ──
+  // ── GET screenshot image (proxied from MinIO) ──
   .get(
     "/screenshot/:projectId/:index",
     async ({ params, set }) => {
@@ -96,12 +96,14 @@ export const aiController = new Elysia({ prefix: "/ai" })
           set.status = 400;
           return { success: false, message: "Invalid screenshot index" };
         }
-        const url = await AiService.getScreenshotUrl(params.projectId, index);
-        if (!url) {
+        const buffer = await AiService.getScreenshotBuffer(params.projectId, index);
+        if (!buffer) {
           set.status = 404;
           return { success: false, message: "Screenshot not found" };
         }
-        return { success: true, data: { url } };
+        set.headers["content-type"] = "image/png";
+        set.headers["cache-control"] = "public, max-age=3600";
+        return new Response(buffer);
       } catch (err) {
         const { message, statusCode } = sanitizeError(err);
         set.status = statusCode;
@@ -114,8 +116,8 @@ export const aiController = new Elysia({ prefix: "/ai" })
         index: t.String(),
       }),
       detail: {
-        summary: "Get screenshot URL",
-        description: "Returns a presigned MinIO URL for a deep scan screenshot.",
+        summary: "Get screenshot image",
+        description: "Returns the screenshot PNG proxied from MinIO storage.",
         tags: ["AI"],
       },
     },

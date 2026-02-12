@@ -50,8 +50,8 @@ export class AiService {
     return this.http.post<any>(`${this.base}/ai/deep-scan/${projectId}`, {});
   }
 
-  /** Get presigned URL for a deep scan screenshot */
-  getScreenshotUrl(projectId: string, index: number): Observable<{ success: boolean; data: { url: string } }> {
-    return this.http.get<any>(`${this.base}/ai/screenshot/${projectId}/${index}`);
+  /** Get direct URL to a deep scan screenshot (proxied via backend) */
+  getScreenshotUrl(projectId: string, index: number): string {
+    return `${this.base}/ai/screenshot/${projectId}/${index}`;
   }
 }

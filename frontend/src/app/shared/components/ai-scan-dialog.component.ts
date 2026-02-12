@@ -386,19 +386,12 @@ export class AiScanDialogComponent {
     });
   }
 
-  /** Load screenshot URLs from MinIO via presigned URLs */
+  /** Build screenshot URLs (direct backend proxy, no API calls needed) */
   private loadScreenshotUrls(deep: DeepScanResult) {
     const paths = deep.screenshotPaths ?? [];
     if (!paths.length) { this.screenshotUrls.set([]); return; }
-    const urls: string[] = [];
-    let loaded = 0;
-    paths.forEach((_, i) => {
-      this.aiService.getScreenshotUrl(this.projectId(), i).subscribe({
-        next: (res) => { if (res.success) urls[i] = res.data.url; },
-        complete: () => { loaded++; if (loaded === paths.length) this.screenshotUrls.set(urls.filter(Boolean)); },
-        error: () => { loaded++; if (loaded === paths.length) this.screenshotUrls.set(urls.filter(Boolean)); },
-      });
-    });
+    const urls = paths.map((_, i) => this.aiService.getScreenshotUrl(this.projectId(), i));
+    this.screenshotUrls.set(urls);
   }
 
   /** Open a screenshot URL in a new tab */

@@ -428,16 +428,16 @@ Analyze how well this submission meets the lab requirements.`;
   }
 
   /* ────────────────────────────────────────
-   * Get presigned URL for a screenshot
+   * Get screenshot buffer from MinIO
    * ──────────────────────────────────────── */
-  static async getScreenshotUrl(projectId: string, index: number): Promise<string | null> {
+  static async getScreenshotBuffer(projectId: string, index: number): Promise<Buffer | null> {
     const project = await db.query.projects.findFirst({
       where: eq(projects.id, projectId),
       columns: { deepScanScreenshots: true },
     });
     const paths = (project?.deepScanScreenshots as string[]) ?? [];
     if (index < 0 || index >= paths.length) return null;
-    return MinioService.getFileUrl(BUCKET, paths[index], 3600); // 1 hour
+    return MinioService.getFileBuffer(BUCKET, paths[index]);
   }
 }
 
