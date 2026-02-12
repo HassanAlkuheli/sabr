@@ -92,6 +92,13 @@
       "when": 1770856919676,
       "tag": "0012_add-predicted-grade-and-screenshots",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1770857000000,
+      "tag": "0013_fix-predicted-grade-columns",
+      "breakpoints": true
     }
   ]
 }
