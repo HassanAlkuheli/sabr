@@ -2,6 +2,14 @@
 
 Sabr is a full-stack student project deployment platform that lets professors publish lab assignments and automatically deploy every student submission in its own isolated environment. The platform pairs a Bun + Elysia backend for orchestration with an Angular + PrimeNG front end so teams can manage labs, grading, and live deployments without swapping between tools.
 
+## What's new (v0.24)
+- AI-assisted grading: code-based LLM analysis (code-scan) and Playwright-based behavioral deep-scan integrated into the platform.
+- Predicted grade: automated grade suggestion computed as 60% code-scan + 40% deep-scan and shown on student/professor tables.
+- Playwright screenshots persisted in MinIO and proxied by backend so browser `<img>` can load screenshots securely.
+- Reliability fixes: longer Playwright timeouts, DB migration safety (IF NOT EXISTS fallback), and migration corrections.
+- UX: screenshot gallery in the AI Scan dialog and predicted-grade column added to professor & student views.
+
+
 ## Key Capabilities
 - **Lab management** – Professors create labs, set deadlines/max grades, and target specific class sections.
 - **Student submissions** – Students upload archives; the platform unzips them, spins up Docker containers, and wires up databases automatically.
