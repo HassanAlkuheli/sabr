@@ -401,11 +401,11 @@ Analyze how well this submission meets the lab requirements.`;
   static async computePredictedGrade(projectId: string, maxGrade: number) {
     const project = await db.query.projects.findFirst({
       where: eq(projects.id, projectId),
-      columns: { codeScanResult: true, deepScanResult: true },
+      columns: { aiScanResult: true, deepScanResult: true },
     });
     if (!project) return;
 
-    const codePct = (project.codeScanResult as any)?.matchPercentage ?? null;
+    const codePct = (project.aiScanResult as any)?.matchPercentage ?? null;
     const deepPct = (project.deepScanResult as any)?.matchPercentage ?? null;
 
     let finalPct: number;
